@@ -1,0 +1,15 @@
+01.06.2014 v0.90
+added: more checks for file-overwrite
+added: new asc-class where biomass-class is derived from
+
+19.05.2014 v0.84
+fixed: remove pass1 .tmp clusterfile
+
+11.05.2014 v0.83
+fixed: bug in ClusterBRI::WriteClusterfile(): clusterfile1 was overwritten
+fixed: biomass-threshold --bthres
+added: check for file-overwrite of clusterfiles
+
+08.05.2015 v0.81
+added: rewrote command line parsing
+added: --extend option

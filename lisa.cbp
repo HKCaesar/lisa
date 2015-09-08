@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="lisa" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/lisa" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/lisa" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option parameters="-a256 --agb-file c:\eefrags\sexton\america\agb_america.txt --input c:\eefrags\sexton\america\sexton_america.bri" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="src/analysis/cluster.cpp" />
+		<Unit filename="src/analysis/cluster.h" />
+		<Unit filename="src/analysis/proj.cpp" />
+		<Unit filename="src/analysis/proj.h" />
+		<Unit filename="src/bmatrix.h" />
+		<Unit filename="src/file/asc.cpp" />
+		<Unit filename="src/file/asc.h" />
+		<Unit filename="src/file/bm.cpp" />
+		<Unit filename="src/file/bm.h" />
+		<Unit filename="src/file/bri.cpp" />
+		<Unit filename="src/file/bri.h" />
+		<Unit filename="src/file/imgfile.h" />
+		<Unit filename="src/file/pgm.cpp" />
+		<Unit filename="src/file/pgm.h" />
+		<Unit filename="src/global.h" />
+		<Unit filename="src/main.cpp" />
+		<Unit filename="src/model/cm.cpp" />
+		<Unit filename="src/model/cm.h" />
+		<Unit filename="src/model/counter.h" />
+		<Unit filename="src/model/mixer.h" />
+		<Unit filename="src/model/model.h" />
+		<Unit filename="src/model/rangecoder.cpp" />
+		<Unit filename="src/model/rangecoder.h" />
+		<Unit filename="src/rand.h" />
+		<Unit filename="src/rle.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

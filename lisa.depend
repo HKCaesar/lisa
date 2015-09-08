@@ -1,0 +1,231 @@
+# depslib dependency file v1.0
+1411130631 source:c:\code\lisa\main.cpp
+	"global.h"
+	"rand.h"
+	"pgm.h"
+	"bri.h"
+	"cluster.h"
+	"proj.h"
+	"bmatrix.h"
+	"rangecoder.h"
+	"model/counter.h"
+
+1411132014 c:\code\lisa\global.h
+	<algorithm>
+	<iostream>
+	<vector>
+	<list>
+	<iomanip>
+	<fstream>
+	<sstream>
+	<cstdlib>
+	<cstdio>
+	<cmath>
+	<cstring>
+	<sys/time.h>
+
+1408542961 c:\code\lisa\rand.h
+	"global.h"
+
+1409911233 source:c:\code\lisa\pgm.cpp
+	"pgm.h"
+
+1409911223 c:\code\lisa\pgm.h
+	"global.h"
+
+1411376306 source:c:\code\lisa\bri.cpp
+	"bri.h"
+
+1411132348 c:\code\lisa\bri.h
+	"pgm.h"
+	"rangecoder.h"
+	"model/counter.h"
+	"model/mixer.h"
+
+1410522091 c:\code\lisa\cluster.h
+	"bri.h"
+	"proj.h"
+
+1410773053 source:c:\code\lisa\cluster.cpp
+	"cluster.h"
+
+1409910846 source:c:\code\lisa\proj.c
+	"proj.h"
+
+1410520745 c:\code\lisa\proj.h
+	"global.h"
+
+1410525769 source:c:\code\lisa\proj.cpp
+	"proj.h"
+
+1410528127 c:\code\lisa\bmatrix.h
+
+1411121917 source:c:\code\lisa\rangecoder.cpp
+	"RangeCoder.h"
+
+1411131990 c:\code\lisa\rangecoder.h
+	"global.h"
+	"model\model.h"
+
+1411131432 c:\code\lisa\model\counter.h
+
+1411132207 c:\code\lisa\model\mixer.h
+
+1411132024 c:\code\lisa\model\model.h
+
+1411378661 source:c:\code\lisa\model\cm.cpp
+	"cm.h"
+
+1411378605 c:\code\lisa\model\cm.h
+
+1433164711 source:c:\code\lisa\src\analysis\cluster.cpp
+	"cluster.h"
+
+1433164705 c:\code\lisa\src\analysis\cluster.h
+	"proj.h"
+	"..\file\bm.h"
+	"..\file\bri.h"
+	"..\rle.h"
+
+1429258966 c:\code\lisa\src\bri.h
+	"pgm.h"
+	"txt.h"
+	"model/cm.h"
+	"imgfile.h"
+	"model/counter.h"
+	"model/mixer.h"
+
+1414582100 c:\code\lisa\src\pgm.h
+	"global.h"
+	"imgfile.h"
+
+1433159393 c:\code\lisa\src\global.h
+	<algorithm>
+	<iostream>
+	<vector>
+	<list>
+	<iomanip>
+	<fstream>
+	<sstream>
+	<cstdlib>
+	<cstdio>
+	<cmath>
+	<cstring>
+	<sys/time.h>
+
+1411378714 c:\code\lisa\src\model\rangecoder.h
+	"..\global.h"
+	"model.h"
+
+1411132024 c:\code\lisa\src\model\model.h
+
+1411380524 c:\code\lisa\src\model\counter.h
+	"model.h"
+
+1411380549 c:\code\lisa\src\model\mixer.h
+	"model.h"
+	"..\global.h"
+
+1432029715 c:\code\lisa\src\analysis\proj.h
+	"..\global.h"
+
+1412172417 source:c:\code\lisa\src\analysis\proj.cpp
+	"proj.h"
+
+1429524899 source:c:\code\lisa\src\bri.cpp
+	"bri.h"
+
+1411391732 c:\code\lisa\src\model\cm.h
+	"counter.h"
+	"mixer.h"
+	"rangecoder.h"
+
+1433164815 source:c:\code\lisa\src\main.cpp
+	"global.h"
+	"rand.h"
+	"file/pgm.h"
+	"file/bri.h"
+	"file/asc.h"
+	"file/bm.h"
+	"bmatrix.h"
+	"analysis/cluster.h"
+	"analysis/proj.h"
+	"model/rangecoder.h"
+	"model/counter.h"
+
+1408542961 c:\code\lisa\src\rand.h
+	"global.h"
+
+1410528127 c:\code\lisa\src\bmatrix.h
+
+1411121917 source:c:\code\lisa\src\model\rangecoder.cpp
+	"RangeCoder.h"
+
+1414581962 source:c:\code\lisa\src\pgm.cpp
+	"pgm.h"
+
+1411391710 source:c:\code\lisa\src\model\cm.cpp
+	"cm.h"
+
+1414582797 c:\code\lisa\src\imgfile.h
+	"global.h"
+
+1415969245 source:c:\code\lisa\src\img.cpp
+	"img.h"
+
+1414587272 c:\code\lisa\src\img.h
+	"imgfile.h"
+
+1432129902 c:\code\lisa\src\analysis\biomass.h
+	"../global.h"
+
+1433164362 source:c:\code\lisa\src\analysis\biomass.cpp
+	"biomass.h"
+
+1429262206 c:\code\lisa\src\txt.h
+	"imgfile.h"
+
+1430750354 source:c:\code\lisa\src\txt.cpp
+	"txt.h"
+
+1430221583 c:\code\lisa\src\rle.h
+	"global.h"
+
+1432727627 c:\code\lisa\src\file\bri.h
+	"pgm.h"
+	"asc.h"
+	"imgfile.h"
+	"model/counter.h"
+	"model/mixer.h"
+
+1431078053 c:\code\lisa\src\file\pgm.h
+	"..\global.h"
+	"imgfile.h"
+
+1433158286 c:\code\lisa\src\file\imgfile.h
+	"..\global.h"
+
+1432727597 c:\code\lisa\src\file\txt.h
+	"imgfile.h"
+
+1432727739 source:c:\code\lisa\src\file\bri.cpp
+	"bri.h"
+
+1414581962 source:c:\code\lisa\src\file\pgm.cpp
+	"pgm.h"
+
+1432029411 source:c:\code\lisa\src\file\txt.cpp
+	"txt.h"
+
+1433162901 source:c:\code\lisa\src\file\asc.cpp
+	"asc.h"
+
+1433164121 c:\code\lisa\src\file\asc.h
+	"imgfile.h"
+
+1433167506 source:c:\code\lisa\src\file\bm.cpp
+	"bm.h"
+
+1433166949 c:\code\lisa\src\file\bm.h
+	"asc.h"
+
