@@ -23,13 +23,14 @@ class BRIOptions
     write_clusterlabel=0;
     edge_dept=100.0;
     min_fragment_size=0.0;
+    relative_carbon_loss=0.5;
     verbose=false;
   };
   BRI &BRIFile;
   Projection &Proj;
   BM &BMass;
   int pixel_len,write_clusterlabel;
-  double edge_dept,min_fragment_size;
+  double edge_dept,relative_carbon_loss,min_fragment_size;
   bool verbose;
   std::string str_labelfile,str_clusterfile1,str_clusterfile2;
 };

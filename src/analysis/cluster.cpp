@@ -268,7 +268,7 @@ void ClusterBRI::SaveSmallClusterData(std::string &fname)
 
           double biomass_ha=(biomass*10000.)/area_m2; // [t/ha]
           double carbon_ha=0.5*biomass_ha;
-          double c_loss=(0.5*edge_area_de/10000.*carbon_ha)/1000000000.; //[Gt]
+          double c_loss=(opt.relative_carbon_loss*edge_area_de/10000.*carbon_ha)/1000000000.; //[Gt]
           hist_totalloss[dclass]+=c_loss;
         } else cout << "warning: too large fragment detected: " << area_m2/10000. << " ha" << endl;
     }
@@ -498,6 +498,6 @@ void ClusterBRI::ClusterAnalyzation()
   cout << "total biomass:       " << std::fixed << std::setprecision(2) << myStats.total_biomass << " Gt" << endl;
   cout << "mean biomass:        " << std::fixed << std::setprecision(2) << (myStats.total_biomass*1000)/(Utils::SqMetre_To_MillHa(myStats.total_area)) << " t/ha" << endl;
   cout << "total C-stock:       " << std::fixed << std::setprecision(2) << (0.5*myStats.total_biomass) << " Gt" << endl;
-  cout << "total C-loss:        " << std::fixed << std::setprecision(2) << CalculateCLossGT(myStats.total_biomass,myStats.total_area,myStats.total_edge_area_de) << " Gt" << endl;
+  cout << "total C-loss:        " << std::fixed << std::setprecision(2) << CalculateCLossGT(myStats.total_biomass,myStats.total_area,myStats.total_edge_area_de) << " Gt (rel. loss e=" <<opt.relative_carbon_loss<<")"<< endl;
   }
 }

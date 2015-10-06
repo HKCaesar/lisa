@@ -292,13 +292,13 @@ class ComandLine {
     float closs;
   };
   public:
-      static void Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode);
+      static void Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,double rloss,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode);
       static void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
       static void TestConsistency();
       static void Reduce(const std::string &str_ifile,int reduction_factor);
 };
 
-void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode)
+void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,double rloss,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode)
 {
   FILE *file=fopen(str_ifile.c_str(),"rb");
   cout << "open file: '" << str_ifile << "': ";
@@ -336,6 +336,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
 
             BRIOptions options(myBRI,myProj,myBiomass);
             options.edge_dept=edge_dept;
+            options.relative_carbon_loss=rloss;
             options.min_fragment_size=min_fragment;
             options.pixel_len=pixel_len;
             options.write_clusterlabel=write_mode;
@@ -544,6 +545,7 @@ int main(int argc,char *argv[])
     int pixel_len=1;
     double mean_biomass=0.0;
     double bthres=0.0;
+    double rloss=0.5;
     int reduction_factor=500;
     bool force_overwrite=false;
     std::string str_ifile,str_ofile;
@@ -570,6 +572,7 @@ int main(int argc,char *argv[])
        cout << "--version     print version info" << endl;
        cout << "--agb-file    saatchi agb biomass file [t/ha]" << endl;
        cout << "--bthres      biomass threshold [t/ha] (default: 0 t/ha)"<<endl;
+       cout << "--rloss       relative carbon loss in edge areas, default: 0.5" << endl;
        cout << "--force       force overwrite of files"<<endl;
        cout << "-r[#]   reduction factor for use with --map option, default: 500"<<endl;
        cout << "-b[#]   mean biomass for use with --analyze"<<endl;
@@ -606,6 +609,7 @@ int main(int argc,char *argv[])
     if (myCmdOpt.SearchOption("-o","--output")) myCmdOpt.getopt(str_ofile);
     if (myCmdOpt.SearchOption("","--agb-file")) myCmdOpt.getopt(str_bfile);
     if (myCmdOpt.SearchOption("","--bthres")) myCmdOpt.getopt(bthres);
+    if (myCmdOpt.SearchOption("","--rloss")) myCmdOpt.getopt(rloss);
 
     if (verbosity_level>1) {
        cout << "mode:      " << cmode << endl;
@@ -624,7 +628,7 @@ int main(int argc,char *argv[])
 
     if (cmode==0)
     {
-      ComandLine::Analyze(str_ifile,str_bfile,ncells,mean_biomass,bthres,edge_dept,min_fragment,pixel_len,write_mode,save_mode);
+      ComandLine::Analyze(str_ifile,str_bfile,ncells,mean_biomass,bthres,rloss,edge_dept,min_fragment,pixel_len,write_mode,save_mode);
     } else if (cmode==1 || cmode==2)
     {
       ComandLine::Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);

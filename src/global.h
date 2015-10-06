@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.90 (c) 2014/2015 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.91 (c) 2014/2015 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
