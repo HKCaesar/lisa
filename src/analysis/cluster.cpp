@@ -83,10 +83,16 @@ void ClusterBRI::CalculateStats()
       myStats.cell_area+=(-cdata[i]);
       myStats.total_area+=area;
       myStats.total_border_len+=edge_len;
-      myStats.total_edge_area_de+=CalculateEdgeAreaDE(area,edge_len);
+      double edge_area_de=CalculateEdgeAreaDE(area,edge_len);
+      myStats.total_edge_area_de+=edge_area_de;
       myStats.total_edge_area_circle+=CalculateEdgeAreaCircle(area);
 
       myStats.total_biomass+=(clusterdata[i].biomass/1000000000.); //Gt
+
+      double biomass_ha=(clusterdata[i].biomass*10000.)/clusterdata[i].area; // [t/ha]
+      double carbon_ha=0.5*biomass_ha;
+      double c_loss=(opt.relative_carbon_loss*edge_area_de/10000.*carbon_ha)/1000000000.; //[Gt]
+      myStats.total_closs+=c_loss;
       //myStats.total_biomass+=(areaha*(myBiomass.GetBiomass()./1000000000.)); //Gt
       if (area>myStats.max_area) myStats.max_area=area;
       myStats.num_clusters++;
@@ -328,17 +334,17 @@ double ClusterBRI::CalculateCLossPerHA(int64_t label)
   double area_m2=clusterdata[label].area;
   double edge_area_de=CalculateEdgeAreaDE(area_m2,clusterdata[label].border);
   if (edge_area_de < 0) cout << "warning: edge_area < 0\n";
-  double c_loss=(0.25*edge_area_de*clusterdata[label].biomass*10000.)/(area_m2*area_m2);
+  double c_loss=(0.5*opt.relative_carbon_loss*edge_area_de*clusterdata[label].biomass*10000.)/(area_m2*area_m2);
   return c_loss;
 }
 
 // calculate carbon-loss in Gt, biomass in Gt,area_m2 in m^2, edge_area=m^2
-double ClusterBRI::CalculateCLossGT(double biomass_gt,double area_m2,double edge_area,double eps)
+/*double ClusterBRI::CalculateCLossGT(double biomass_gt,double area_m2,double edge_area,double eps)
 {
   double biomass_m2=(biomass_gt)/area_m2; // [Gt/ha]
   double c_loss=(eps*edge_area*0.5*biomass_m2); //[Gt]
   return c_loss;
-}
+}*/
 
 void ClusterBRI::WriteLabelFile()
 {
@@ -498,6 +504,6 @@ void ClusterBRI::ClusterAnalyzation()
   cout << "total biomass:       " << std::fixed << std::setprecision(2) << myStats.total_biomass << " Gt" << endl;
   cout << "mean biomass:        " << std::fixed << std::setprecision(2) << (myStats.total_biomass*1000)/(Utils::SqMetre_To_MillHa(myStats.total_area)) << " t/ha" << endl;
   cout << "total C-stock:       " << std::fixed << std::setprecision(2) << (0.5*myStats.total_biomass) << " Gt" << endl;
-  cout << "total C-loss:        " << std::fixed << std::setprecision(2) << CalculateCLossGT(myStats.total_biomass,myStats.total_area,myStats.total_edge_area_de) << " Gt (rel. loss e=" <<opt.relative_carbon_loss<<")"<< endl;
+  cout << "total C-loss:        " << std::fixed << std::setprecision(2) << myStats.total_closs<< " Gt (rel. loss e=" <<opt.relative_carbon_loss<<")"<< endl;
   }
 }

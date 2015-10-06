@@ -47,11 +47,11 @@ class cluster_stats {
   void Reset(){
     cell_area=num_clusters=num_clusters10ha=num_clusters50ha=0;
     total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=max_area=0.0;
-    total_biomass=0.;
+    total_biomass=total_closs=0.;
   };
   int64_t cell_area,num_clusters,num_clusters10ha,num_clusters50ha;
   double total_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
-  double total_biomass;
+  double total_biomass,total_closs;
 };
 
 class Timer {
