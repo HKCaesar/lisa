@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.91 (c) 2014/2015 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.92 (c) 2014/2015 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -94,6 +94,14 @@ class GeoUtils {
       // at the equator one arcsec approx. 1/60th of a nautical mile (or 101.27 feet or 30.87 meters)
       static double cellsize2m(double cellsize) {
         return cellsize*3600.*30.87;
+      }
+      static int getLongPos(double ref_pos,double left,double cellsize)
+      {
+        return round((ref_pos-left)/cellsize);
+      }
+      static int getLatPos(double ref_pos,double top,double cellsize)
+      {
+        return round((-ref_pos+top)/cellsize);
       }
 };
 

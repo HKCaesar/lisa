@@ -295,7 +295,7 @@ class ComandLine {
       static void Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,double rloss,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode);
       static void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
       static void TestConsistency();
-      static void Reduce(const std::string &str_ifile,int reduction_factor);
+      static void Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
 };
 
 void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,double rloss,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode)
@@ -430,13 +430,18 @@ void ComandLine::TestConsistency()
   TestConsistence(SimpleRand::rU_Int(1,dim),SimpleRand::rU_Int(1,dim),1,0);
 }
 
-void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor)
+void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend)
 {
+      cout << str_ifile << endl;
       std::vector <tlabel> vlabel;
       std::vector <float> reflabel;
-      std::string str_lfile,str_rfile;
+      std::string str_lfile,str_rfile,str_pfile;
       Utils::ReplaceExt(str_ifile,str_lfile,".lab",true);
       Utils::ReplaceExt(str_ifile,str_rfile,".dat",true);
+      Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
+
+
+
       ifstream lfile(str_lfile);
       int64_t maxlabel=0;
       int cnt=0;
@@ -482,6 +487,27 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor)
             uint32_t width=Utils::Get32LH(tbuf);
             uint32_t height=Utils::Get32LH(tbuf+4);
             cout << width << "x" << height << endl;
+
+            Projection Proj(width,height);
+            Proj.ReadCoordinateFile(str_pfile);
+            Proj.CalculateCellSize();
+            cout << Proj.getCellsize() << endl;
+            int pleft=0;
+            int pright=width;
+            int ptop=0;
+            int pbottom=height;
+
+      if ( fabs(myExtend.top-myExtend.bottom)>0. && fabs(myExtend.right-myExtend.left)>0.)
+      {
+        pleft=GeoUtils::getLongPos(myExtend.left,Proj.getLeft(),Proj.getCellsize());
+        ptop=GeoUtils::getLatPos(myExtend.top,Proj.getTop(),Proj.getCellsize());
+        cout << myExtend.left << "->" << pleft << endl;
+        cout << myExtend.top << "->" << ptop << endl;
+        pright=pleft+5000;
+        pbottom=ptop+5000;
+      }
+
+
             uint8_t *rowdata=new uint8_t[width*8];
             int64_t *labelrow=new int64_t[width];
             size_t tread;
@@ -491,9 +517,20 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor)
 
             ofstream rfile(str_rfile);
 
+            if (ptop) {
+             for (uint32_t i=0;i<ptop-1;i++) {
+               tread=fread(tbuf,1,4,clusterfile);
+               uint32_t rowsize=Utils::Get32LH(tbuf);
+               fseek(clusterfile,rowsize,SEEK_CUR);
+               if (i%10==0) cout << "skipping " << (ptop-1) << " lines: " << Utils::ConvertFixed(i*100/(double)(ptop-1),1) << "%\r";
+             }
+             cout << endl;
+            }
+
             int64_t total_cells=0;
             int rowcnt=0;
-            for (uint32_t row=0;row<height;row++) {
+            for (uint32_t row=ptop;row<pbottom;row++) {
+
                 tread=fread(tbuf,1,4,clusterfile);
                 uint32_t rowsize=Utils::Get32LH(tbuf);
                 //cout << rowsize << endl;
@@ -502,23 +539,32 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor)
                 else {
                   RLEPack::UnpackRow(rowdata,width,labelrow);
                   float *drow=datarows[rowcnt];
-                  for (uint32_t i=0;i<width;i++) {
-                    drow[i]=0.;
+                  int j=0;
+                  for (uint32_t i=pleft;i<pright;i++) {
+                    drow[j]=0.;
                     if (labelrow[i]) {
                         total_cells++;
                         if (labelrow[i]>maxlabel) cout << "warning: label outside range\n";
-                        else drow[i]=reflabel[labelrow[i]];
+                        else drow[j]=reflabel[labelrow[i]];
                     };
+                    j++;
                   }
                   rowcnt++;
                   cout << (row+1) << "/" << height <<"\r";
                   if (rowcnt>=reduction_factor) {
-                    RowReduce(rfile,datarows,width,reduction_factor,rowcnt);
+                    /*int w=pright-pleft;
+                    for (int i=0;i<w;i++) {
+                        rfile << std::to_string(drow[i]);
+                        if (i<w-1) rfile<<",";
+                    }
+                    rfile << endl;*/
+                    RowReduce(rfile,datarows,pright-pleft,reduction_factor,rowcnt);
                     rowcnt=0;
                   }
                 }
+
             }
-            if (rowcnt) RowReduce(rfile,datarows,width,reduction_factor,rowcnt);
+            if (rowcnt) RowReduce(rfile,datarows,pright-pleft,reduction_factor,rowcnt);
             cout << "total cells:   " << total_cells << endl;
             rfile.close();
             for (int i=0;i<reduction_factor;i++) delete []datarows[i];
@@ -583,12 +629,11 @@ int main(int argc,char *argv[])
     if (myCmdOpt.SearchOption("-e","--extend")) {
       std::vector <double>vextend;
       myCmdOpt.getopt(vextend);
-      if (vextend.size()==4) {
-        myGeoExtend.top=vextend[0];
-        myGeoExtend.left=vextend[1];
-        myGeoExtend.right=vextend[2];
-        myGeoExtend.bottom=vextend[3];
-      } else cout << "warning: unexpected size of extend=" << vextend.size() << endl;
+      if (vextend.size()!=4) cout << "warning: unexpected size of extend=" << vextend.size() << endl;
+      if (vextend.size()>=1) myGeoExtend.top=vextend[0];
+      if (vextend.size()>=2) myGeoExtend.left=vextend[1];
+      if (vextend.size()>=3) myGeoExtend.right=vextend[2];
+      if (vextend.size()>=4) myGeoExtend.bottom=vextend[3];
     }
     if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=0;myCmdOpt.getopt(ncells);};
     if (myCmdOpt.SearchOption("","--info")) cmode=1;
@@ -637,7 +682,7 @@ int main(int argc,char *argv[])
       ComandLine::TestConsistency();
     } else if (cmode==4)
     {
-      ComandLine::Reduce(str_ifile,reduction_factor);
+      ComandLine::Reduce(str_ifile,reduction_factor,myGeoExtend);
     } else if (cmode==5) {
       PrintVersion(1);
     }
