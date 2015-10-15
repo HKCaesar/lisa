@@ -68,6 +68,17 @@ double ClusterBRI::CalculateEdgeAreaCircle(double area)
   }
 }
 
+
+// Calculate C-Loss for a forest fragment in Gt
+// input: biomass in t, area in m^2, edge_area in m^2
+double ClusterBRI::CalculateCLoss(double biomass,double area_m2,double edge_area)
+{
+  double biomass_ha=(biomass*10000.)/area_m2; // [t/ha]
+  double carbon_ha=0.5*biomass_ha;
+  double c_loss=(opt.relative_carbon_loss*edge_area/10000.*carbon_ha)/1000000000.; //[Gt]
+  return c_loss;
+}
+
 void ClusterBRI::CalculateStats()
 {
   myStats.Reset(); // in case CalculateStats is called a second time
@@ -89,11 +100,7 @@ void ClusterBRI::CalculateStats()
 
       myStats.total_biomass+=(clusterdata[i].biomass/1000000000.); //Gt
 
-      double biomass_ha=(clusterdata[i].biomass*10000.)/clusterdata[i].area; // [t/ha]
-      double carbon_ha=0.5*biomass_ha;
-      double c_loss=(opt.relative_carbon_loss*edge_area_de/10000.*carbon_ha)/1000000000.; //[Gt]
-      myStats.total_closs+=c_loss;
-      //myStats.total_biomass+=(areaha*(myBiomass.GetBiomass()./1000000000.)); //Gt
+      myStats.total_closs+=CalculateCLoss(clusterdata[i].biomass,clusterdata[i].area,edge_area_de);
       if (area>myStats.max_area) myStats.max_area=area;
       myStats.num_clusters++;
     }
@@ -271,11 +278,7 @@ void ClusterBRI::SaveSmallClusterData(std::string &fname)
 
           double biomass=(clusterdata[i].biomass);
           hist_biomass[dclass]+=biomass/1000000000.;
-
-          double biomass_ha=(biomass*10000.)/area_m2; // [t/ha]
-          double carbon_ha=0.5*biomass_ha;
-          double c_loss=(opt.relative_carbon_loss*edge_area_de/10000.*carbon_ha)/1000000000.; //[Gt]
-          hist_totalloss[dclass]+=c_loss;
+          hist_totalloss[dclass]+=CalculateCLoss(clusterdata[i].biomass,clusterdata[i].area,edge_area_de);
         } else cout << "warning: too large fragment detected: " << area_m2/10000. << " ha" << endl;
     }
   PrintHist(hist_area,"fragment distribution");

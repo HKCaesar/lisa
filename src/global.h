@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.92 (c) 2014/2015 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.93 (c) 2014/2015 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -372,6 +372,10 @@ static std::string SecToTime(double time)
         buff<<setprecision(decimals)<<fixed<<number;
         return buff.str();
       };
+    static bool isFloat(double val)
+    {
+      return (val - (int)val > 0.0);
+    }
 };
 
 class StringUtils {

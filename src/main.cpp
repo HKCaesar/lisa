@@ -497,14 +497,22 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
             int ptop=0;
             int pbottom=height;
 
-      if ( fabs(myExtend.top-myExtend.bottom)>0. && fabs(myExtend.right-myExtend.left)>0.)
+      if ( fabs(myExtend.top)>0. && fabs(myExtend.left)>0.)
       {
-        pleft=GeoUtils::getLongPos(myExtend.left,Proj.getLeft(),Proj.getCellsize());
-        ptop=GeoUtils::getLatPos(myExtend.top,Proj.getTop(),Proj.getCellsize());
-        cout << myExtend.left << "->" << pleft << endl;
-        cout << myExtend.top << "->" << ptop << endl;
-        pright=pleft+5000;
-        pbottom=ptop+5000;
+          std::cout << "\nreframing extend..." << endl;
+          pleft=GeoUtils::getLongPos(myExtend.left,Proj.getLeft(),Proj.getCellsize());
+          ptop=GeoUtils::getLatPos(myExtend.top,Proj.getTop(),Proj.getCellsize());
+          if (!Utils::isFloat(myExtend.right)) pright=pleft+(int)myExtend.right;
+          else pright=GeoUtils::getLongPos(myExtend.right,Proj.getLeft(),Proj.getCellsize());
+
+          if (!Utils::isFloat(myExtend.bottom)) pbottom=ptop+(int)myExtend.bottom;
+          else pbottom=GeoUtils::getLatPos(myExtend.bottom,Proj.getTop(),Proj.getCellsize());
+          cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
+          double tleft=(Proj.getLeft()+pleft*Proj.getCellsize());
+          double tright=(Proj.getLeft()+pright*Proj.getCellsize());
+          double ttop=(Proj.getTop()-ptop*Proj.getCellsize());
+          double tbottom=(Proj.getTop()-pbottom*Proj.getCellsize());
+          cout << std::fixed << std::setprecision(8) << "Top: " << ttop << ", Left: " << tleft << ", Right: " << tright << ", Bottom: " << tbottom << endl;
       }
 
 
@@ -518,7 +526,7 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
             ofstream rfile(str_rfile);
 
             if (ptop) {
-             for (uint32_t i=0;i<ptop-1;i++) {
+             for (int i=0;i<ptop-1;i++) {
                tread=fread(tbuf,1,4,clusterfile);
                uint32_t rowsize=Utils::Get32LH(tbuf);
                fseek(clusterfile,rowsize,SEEK_CUR);
@@ -529,7 +537,7 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
 
             int64_t total_cells=0;
             int rowcnt=0;
-            for (uint32_t row=ptop;row<pbottom;row++) {
+            for (int row=ptop;row<pbottom;row++) {
 
                 tread=fread(tbuf,1,4,clusterfile);
                 uint32_t rowsize=Utils::Get32LH(tbuf);
@@ -540,7 +548,7 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
                   RLEPack::UnpackRow(rowdata,width,labelrow);
                   float *drow=datarows[rowcnt];
                   int j=0;
-                  for (uint32_t i=pleft;i<pright;i++) {
+                  for (int i=pleft;i<pright;i++) {
                     drow[j]=0.;
                     if (labelrow[i]) {
                         total_cells++;

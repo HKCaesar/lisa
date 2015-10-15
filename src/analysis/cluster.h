@@ -47,7 +47,7 @@ class ClusterBRI
   protected:
     cluster_stats myStats;
     double CalculateCLossPerHA(int64_t label);
-    //double CalculateCLossGT(double biomass_gt,double area_m2,double edge_area,double eps=0.5);
+    double CalculateCLoss(double biomass,double area_m2,double edge_area);
     void WriteLabelFile();
     void WriteClusterfile();
     void WriteMarkedRow(int64_t *clusterow,uint32_t width,FILE *file);
