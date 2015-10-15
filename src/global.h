@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.93 (c) 2014/2015 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.94 (c) 2014/2015 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -408,6 +408,39 @@ static void Tokenize(const string& str,
         pos = str.find_first_of(delimiters, lastPos);
     }
 }
+};
+
+class Frame {
+  public:
+     static void SetExtend(double ref_left,double ref_top,double cellsize,const geoExtend &extend,int width,int height,int &pleft,int &ptop,int &pright,int &pbottom)
+     {
+        pleft=0;pright=width;
+        ptop=0;pbottom=height;
+
+        if ( fabs(extend.top)>0. && fabs(extend.left)>0.)
+        {
+         std::cout << "\nreframing extend..." << endl;
+         pleft=GeoUtils::getLongPos(extend.left,ref_left,cellsize);
+         ptop=GeoUtils::getLatPos(extend.top,ref_top,cellsize);
+         if (!Utils::isFloat(extend.right)) pright=pleft+(int)extend.right;
+         else pright=GeoUtils::getLongPos(extend.right,ref_left,cellsize);
+
+         if (!Utils::isFloat(extend.bottom)) pbottom=ptop+(int)extend.bottom;
+         else pbottom=GeoUtils::getLatPos(extend.bottom,ref_top,cellsize);
+
+         cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
+         double tleft=(ref_left+pleft*cellsize);
+         double tright=(ref_left+pright*cellsize);
+         double ttop=(ref_top-ptop*cellsize);
+         double tbottom=(ref_top-pbottom*cellsize);
+         cout << std::fixed << std::setprecision(8) << "Top: " << ttop << ", Left: " << tleft << ", Right: " << tright << ", Bottom: " << tbottom << endl;
+         if (pleft<0 || pleft>width || pright<0 || pright>width || ptop<0 || ptop>height || pbottom<0 || pbottom>height) {
+           cout << "error: cannot match extends\n";
+           pleft=0;pright=width;
+           ptop=0;pbottom=height;
+         }
+        }
+     }
 };
 
 #endif // GLOBAL_H

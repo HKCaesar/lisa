@@ -492,29 +492,9 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
             Proj.ReadCoordinateFile(str_pfile);
             Proj.CalculateCellSize();
             cout << Proj.getCellsize() << endl;
-            int pleft=0;
-            int pright=width;
-            int ptop=0;
-            int pbottom=height;
 
-      if ( fabs(myExtend.top)>0. && fabs(myExtend.left)>0.)
-      {
-          std::cout << "\nreframing extend..." << endl;
-          pleft=GeoUtils::getLongPos(myExtend.left,Proj.getLeft(),Proj.getCellsize());
-          ptop=GeoUtils::getLatPos(myExtend.top,Proj.getTop(),Proj.getCellsize());
-          if (!Utils::isFloat(myExtend.right)) pright=pleft+(int)myExtend.right;
-          else pright=GeoUtils::getLongPos(myExtend.right,Proj.getLeft(),Proj.getCellsize());
-
-          if (!Utils::isFloat(myExtend.bottom)) pbottom=ptop+(int)myExtend.bottom;
-          else pbottom=GeoUtils::getLatPos(myExtend.bottom,Proj.getTop(),Proj.getCellsize());
-          cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
-          double tleft=(Proj.getLeft()+pleft*Proj.getCellsize());
-          double tright=(Proj.getLeft()+pright*Proj.getCellsize());
-          double ttop=(Proj.getTop()-ptop*Proj.getCellsize());
-          double tbottom=(Proj.getTop()-pbottom*Proj.getCellsize());
-          cout << std::fixed << std::setprecision(8) << "Top: " << ttop << ", Left: " << tleft << ", Right: " << tright << ", Bottom: " << tbottom << endl;
-      }
-
+            int pleft,pright,ptop,pbottom;
+            Frame::SetExtend(Proj.getLeft(),Proj.getTop(),Proj.getCellsize(),myExtend,width,height,pleft,ptop,pright,pbottom);
 
             uint8_t *rowdata=new uint8_t[width*8];
             int64_t *labelrow=new int64_t[width];
@@ -638,10 +618,12 @@ int main(int argc,char *argv[])
       std::vector <double>vextend;
       myCmdOpt.getopt(vextend);
       if (vextend.size()!=4) cout << "warning: unexpected size of extend=" << vextend.size() << endl;
-      if (vextend.size()>=1) myGeoExtend.top=vextend[0];
-      if (vextend.size()>=2) myGeoExtend.left=vextend[1];
-      if (vextend.size()>=3) myGeoExtend.right=vextend[2];
-      if (vextend.size()>=4) myGeoExtend.bottom=vextend[3];
+      else {
+        myGeoExtend.top=vextend[0];
+        myGeoExtend.left=vextend[1];
+        myGeoExtend.right=vextend[2];
+        myGeoExtend.bottom=vextend[3];
+      }
     }
     if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=0;myCmdOpt.getopt(ncells);};
     if (myCmdOpt.SearchOption("","--info")) cmode=1;

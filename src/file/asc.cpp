@@ -92,25 +92,7 @@ int ASC::WriteExtend(const std::string &fname,int prec)
 // reframe the extend
 void ASC::SetExtend(const geoExtend &myExtend)
 {
-if ( (myExtend.top-myExtend.bottom>0.) && (myExtend.right-myExtend.left>0.))
-  {
-    std::cout << "\nreframing extend..." << endl;
-    pleft=getLongPos(myExtend.left,left);
-    pright=getLongPos(myExtend.right,left);
-    ptop=getLatPos(myExtend.top,top);
-    pbottom=getLatPos(myExtend.bottom,top);
-    cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
-    double tleft=(left+pleft*cellsize);
-    double tright=(left+pright*cellsize);
-    double ttop=(top-ptop*cellsize);
-    double tbottom=(top-pbottom*cellsize);
-    cout << std::fixed << std::setprecision(8) << "Top: " << ttop << ", Left: " << tleft << ", Right: " << tright << ", Bottom: " << tbottom << endl;
-    if (pleft<0 || pleft>width || pright<0 || pright>width || ptop<0 || ptop>height || pbottom<0 || pbottom>height) {
-      cout << "error: cannot match extends\n";
-      pleft=0;pright=width;
-      ptop=0;pbottom=height;
-    }
-  }
+  Frame::SetExtend(left,top,cellsize,myExtend,width,height,pleft,ptop,pright,pbottom);
 }
 
 void ASC::StopReading()
