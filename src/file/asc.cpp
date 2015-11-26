@@ -21,6 +21,7 @@ void ASC::PrintInfo()
 {
   std::cout << "ASC: " << width << "x" << height << endl;
   GeoUtils::PrintInfo(top,left,right,bottom,cellsize);
+  cout << "nodata val: " << nodataval << endl;
 }
 
 int ASC::ReadHeader()

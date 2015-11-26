@@ -9,7 +9,7 @@ ClusterBRI::ClusterBRI(BRIOptions &Options)
   wrows=new int64_t*[bufrows];
   for (int i=0;i<bufrows;i++) wrows[i]=new int64_t[bri_width];
   minlabel=0;
-
+  num_1pixel=0;
 }
 
 ClusterBRI::~ClusterBRI()
@@ -157,6 +157,8 @@ void ClusterBRI::ProcessRow(int row,int cur_row)
   {
     if (currow[i])
     {
+      num_1pixel++;
+
       int64_t pleft,ptop; // load the left & top pixels for the hoshen-kopelman algorithm
       pleft=ptop=0;
       if (i>0) pleft=currow[i-1];
@@ -177,7 +179,7 @@ void ClusterBRI::ProcessRow(int row,int cur_row)
          max_cluster_label++;
          currow[i]=max_cluster_label;
 
-         celldata tcell;tcell.area=icell.pixel_area;tcell.border=border_len;tcell.biomass=icell.pixel_area*biomass_m2;
+         tcelldata tcell;tcell.area=icell.pixel_area;tcell.border=border_len;tcell.biomass=icell.pixel_area*biomass_m2;
          cdata.push_back(-1);
          clusterdata.push_back(tcell);
       } else if (ptop==0 || pleft==0 || (ptop==pleft)) //cluster already seen, but no conflict
@@ -209,7 +211,6 @@ void ClusterBRI::ProcessRow(int row,int cur_row)
         clusterdata[lmin].biomass+=(icell.pixel_area*biomass_m2);
       }
     }
-    //if (clusterfile_write) clusterrow[i]=currow[i];
   }
   if (opt.write_clusterlabel==1)WriteMarkedRow(currow,bri_width,clusterfile1);
 }
@@ -341,14 +342,6 @@ double ClusterBRI::CalculateCLossPerHA(int64_t label)
   return c_loss;
 }
 
-// calculate carbon-loss in Gt, biomass in Gt,area_m2 in m^2, edge_area=m^2
-/*double ClusterBRI::CalculateCLossGT(double biomass_gt,double area_m2,double edge_area,double eps)
-{
-  double biomass_m2=(biomass_gt)/area_m2; // [Gt/ha]
-  double c_loss=(eps*edge_area*0.5*biomass_m2); //[Gt]
-  return c_loss;
-}*/
-
 void ClusterBRI::WriteLabelFile()
 {
   ofstream labelfile(opt.str_labelfile);
@@ -414,6 +407,21 @@ void ClusterBRI::WriteClusterfile()
   std::remove(opt.str_clusterfile1.c_str());
 }
 
+// check connected components for consistency
+void ClusterBRI::CheckClusters()
+{
+  cout << "checking clusters..." << endl;
+
+  // test if the sum of all root-sizes matches "num_1pixel"
+  int64_t num_1test=0;
+  for (size_t i=0;i<cdata.size();i++) {
+     if (cdata[i]<0) num_1test+=-cdata[i];
+  }
+  cout << "test sum of root-sizes: ";
+  if (num_1test==num_1pixel) cout << "passed" << endl;
+  else cout << "failed" << endl;
+}
+
 void ClusterBRI::ClusterAnalyzation()
 {
   if (opt.write_clusterlabel==1) {
@@ -438,7 +446,7 @@ void ClusterBRI::ClusterAnalyzation()
 
   max_cluster_label=0;
   cdata.push_back(max_cluster_label); // dummy label
-  celldata tcell;tcell.area=tcell.border=0.;tcell.biomass=0.;
+  tcelldata tcell;tcell.area=tcell.border=0.;tcell.biomass=0.;
   clusterdata.push_back(tcell);
 
   int lookahead=0;
@@ -481,8 +489,8 @@ void ClusterBRI::ClusterAnalyzation()
 
   CalculateStats();
   if (opt.verbose) {
-  cout << "cdata size: " << ((cdata.size()*8)>>20) << " MB";
-  cout << ", clusterdata size: " << ((clusterdata.size()*16)>>20) << " MB" << endl;
+  cout << "cdata size: " << ((cdata.size()*sizeof(int64_t))>>20) << " MiB";
+  cout << ", clusterdata size: " << ((clusterdata.size()*sizeof(tcelldata))>>20) << " MiB" << endl;
   cout << endl;
 
   cout << "number of clusters:  " << myStats.num_clusters << " (minimum size: " << opt.min_fragment_size << " ha)" << endl;

@@ -259,7 +259,9 @@ void BRI::ConvertToBytes(uint8_t *buf,int nruns)
   memset(buf,0,width*sizeof(uint8_t));
   for (int i=0;i<nruns;i++)
   {
-    for (int k=0;k<runs[i].len;k++) buf[runs[i].pos+k]=1;
+    const int rlen=runs[i].len;
+    const int rpos=runs[i].pos;
+    for (int k=0;k<rlen;k++) buf[rpos+k]=1;
   }
 }
 

@@ -8,7 +8,7 @@
 
 // implements connected component analyzation on .bri-files
 
-struct celldata
+struct tcelldata
 {
   double area,border,biomass;
 };
@@ -43,6 +43,7 @@ class ClusterBRI
     void ClusterAnalyzation();
     void SaveFullClusterData(std::string &fname);
     void SaveSmallClusterData(std::string &fname);
+    void CheckClusters();
     cluster_stats &GetClusterStats(){return myStats;};
   protected:
     cluster_stats myStats;
@@ -71,8 +72,8 @@ class ClusterBRI
     uint8_t *rowbuffer;
     int64_t **wrows; // prev, cur, next
     std::vector <int64_t> cdata;
-    std::vector <celldata> clusterdata;
-    int64_t max_cluster_label;
+    std::vector <tcelldata> clusterdata;
+    int64_t max_cluster_label,num_1pixel;
     int row;
     int64_t max_border_pixel;
     int lookahead_rows,bufrows,endrow;

@@ -78,10 +78,10 @@
 
 1411378605 c:\code\lisa\model\cm.h
 
-1444138476 source:c:\code\lisa\src\analysis\cluster.cpp
+1448537534 source:c:\code\lisa\src\analysis\cluster.cpp
 	"cluster.h"
 
-1444142353 c:\code\lisa\src\analysis\cluster.h
+1448540081 c:\code\lisa\src\analysis\cluster.h
 	"proj.h"
 	"..\file\bm.h"
 	"..\file\bri.h"
@@ -99,7 +99,7 @@
 	"global.h"
 	"imgfile.h"
 
-1444142387 c:\code\lisa\src\global.h
+1448533274 c:\code\lisa\src\global.h
 	<algorithm>
 	<iostream>
 	<vector>
@@ -113,34 +113,34 @@
 	<cstring>
 	<sys/time.h>
 
-1411378714 c:\code\lisa\src\model\rangecoder.h
+1411375114 c:\code\lisa\src\model\rangecoder.h
 	"..\global.h"
 	"model.h"
 
-1411132024 c:\code\lisa\src\model\model.h
+1411128424 c:\code\lisa\src\model\model.h
 
-1411380524 c:\code\lisa\src\model\counter.h
+1411376924 c:\code\lisa\src\model\counter.h
 	"model.h"
 
-1411380549 c:\code\lisa\src\model\mixer.h
+1411376949 c:\code\lisa\src\model\mixer.h
 	"model.h"
 	"..\global.h"
 
-1432029715 c:\code\lisa\src\analysis\proj.h
+1432026115 c:\code\lisa\src\analysis\proj.h
 	"..\global.h"
 
-1412172417 source:c:\code\lisa\src\analysis\proj.cpp
+1412168817 source:c:\code\lisa\src\analysis\proj.cpp
 	"proj.h"
 
 1429524899 source:c:\code\lisa\src\bri.cpp
 	"bri.h"
 
-1411391732 c:\code\lisa\src\model\cm.h
+1411388132 c:\code\lisa\src\model\cm.h
 	"counter.h"
 	"mixer.h"
 	"rangecoder.h"
 
-1444140722 source:c:\code\lisa\src\main.cpp
+1448537029 source:c:\code\lisa\src\main.cpp
 	"global.h"
 	"rand.h"
 	"file/pgm.h"
@@ -153,18 +153,18 @@
 	"model/rangecoder.h"
 	"model/counter.h"
 
-1408542961 c:\code\lisa\src\rand.h
+1408539361 c:\code\lisa\src\rand.h
 	"global.h"
 
-1410528127 c:\code\lisa\src\bmatrix.h
+1410524527 c:\code\lisa\src\bmatrix.h
 
-1411121917 source:c:\code\lisa\src\model\rangecoder.cpp
+1411118317 source:c:\code\lisa\src\model\rangecoder.cpp
 	"RangeCoder.h"
 
 1414581962 source:c:\code\lisa\src\pgm.cpp
 	"pgm.h"
 
-1411391710 source:c:\code\lisa\src\model\cm.cpp
+1411388110 source:c:\code\lisa\src\model\cm.cpp
 	"cm.h"
 
 1414582797 c:\code\lisa\src\imgfile.h
@@ -188,44 +188,44 @@
 1430750354 source:c:\code\lisa\src\txt.cpp
 	"txt.h"
 
-1430221583 c:\code\lisa\src\rle.h
+1430217983 c:\code\lisa\src\rle.h
 	"global.h"
 
-1432727627 c:\code\lisa\src\file\bri.h
+1432724027 c:\code\lisa\src\file\bri.h
 	"pgm.h"
 	"asc.h"
 	"imgfile.h"
 	"model/counter.h"
 	"model/mixer.h"
 
-1431078053 c:\code\lisa\src\file\pgm.h
+1431074453 c:\code\lisa\src\file\pgm.h
 	"..\global.h"
 	"imgfile.h"
 
-1433158286 c:\code\lisa\src\file\imgfile.h
+1433154686 c:\code\lisa\src\file\imgfile.h
 	"..\global.h"
 
 1432727597 c:\code\lisa\src\file\txt.h
 	"imgfile.h"
 
-1432727739 source:c:\code\lisa\src\file\bri.cpp
+1448536953 source:c:\code\lisa\src\file\bri.cpp
 	"bri.h"
 
-1414581962 source:c:\code\lisa\src\file\pgm.cpp
+1414578362 source:c:\code\lisa\src\file\pgm.cpp
 	"pgm.h"
 
 1432029411 source:c:\code\lisa\src\file\txt.cpp
 	"txt.h"
 
-1433162901 source:c:\code\lisa\src\file\asc.cpp
+1445433379 source:c:\code\lisa\src\file\asc.cpp
 	"asc.h"
 
-1433164121 c:\code\lisa\src\file\asc.h
+1433160521 c:\code\lisa\src\file\asc.h
 	"imgfile.h"
 
-1433167506 source:c:\code\lisa\src\file\bm.cpp
+1433163906 source:c:\code\lisa\src\file\bm.cpp
 	"bm.h"
 
-1433166949 c:\code\lisa\src\file\bm.h
+1433163349 c:\code\lisa\src\file\bm.h
 	"asc.h"
 

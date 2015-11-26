@@ -11,6 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option parameters="--test" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -20,7 +21,7 @@
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-a256 --agb-file c:\eefrags\sexton\america\agb_america.txt --input c:\eefrags\sexton\america\sexton_america.bri" />
+				<Option parameters="-a256 --check --input e:\cluster_analysis\hansen\america_2000.bri" />
 				<Compiler>
 					<Add option="-O2" />
 				</Compiler>

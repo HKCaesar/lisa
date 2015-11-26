@@ -286,19 +286,25 @@ bool CmdOptions::SearchOption(const std::string &sshort,const std::string &&sslo
   return optfound;
 }
 
+struct tAnalyzeOptions {
+  double mean_biomass,bthres,rloss;
+  int ncells,edge_dept,min_fragment,pixel_len,write_mode,save_mode;
+  bool check_consistency;
+};
+
 class ComandLine {
   struct tlabel {
     int64_t label;
     float closs;
   };
   public:
-      static void Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,double rloss,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode);
+      static void Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions);
       static void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
       static void TestConsistency();
       static void Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
 };
 
-void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,int ncells,double mean_biomass,double bthres,double rloss,int edge_dept,int min_fragment,int pixel_len,int write_mode,int save_mode)
+void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions)
 {
   FILE *file=fopen(str_ifile.c_str(),"rb");
   cout << "open file: '" << str_ifile << "': ";
@@ -318,15 +324,15 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
             Timer myTimer;
             myTimer.Start();
             myProj.CalculateCellSize();
-            myProj.GenerateInterpolation(ncells);
+            myProj.GenerateInterpolation(AnalyzeOptions.ncells);
 
-            BM myBiomass(mean_biomass);
+            BM myBiomass(AnalyzeOptions.mean_biomass);
 
             if (str_bfile.length()) {
                 Timer myTimer;
                 myTimer.Start();
-                if (!myBiomass.ReadAGBFile(str_bfile,bthres)) {
-                    std::cerr << "  warning: could not open file: '" << str_bfile << "'\n";
+                if (!myBiomass.ReadAGBFile(str_bfile,AnalyzeOptions.bthres)) {
+                    cerr << "  warning: could not open file: '" << str_bfile << "'\n";
                     return;
                 }
                 myTimer.Stop();
@@ -335,11 +341,12 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
             };
 
             BRIOptions options(myBRI,myProj,myBiomass);
-            options.edge_dept=edge_dept;
-            options.relative_carbon_loss=rloss;
-            options.min_fragment_size=min_fragment;
-            options.pixel_len=pixel_len;
-            options.write_clusterlabel=write_mode;
+
+            options.edge_dept=AnalyzeOptions.edge_dept;
+            options.relative_carbon_loss=AnalyzeOptions.rloss;
+            options.min_fragment_size=AnalyzeOptions.min_fragment;
+            options.pixel_len=AnalyzeOptions.pixel_len;
+            options.write_clusterlabel=AnalyzeOptions.write_mode;
             options.verbose=true;
             if (options.write_clusterlabel>0) {
                 Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
@@ -348,13 +355,16 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
             }
             ClusterBRI myCluster(options);
             myCluster.ClusterAnalyzation();
+
+            if (AnalyzeOptions.check_consistency) myCluster.CheckClusters();
+
             std::string str_ofile;
             Utils::ReplaceExt(str_ifile,str_ofile,".csv",true);
-            if (save_mode>0) {
+            if (AnalyzeOptions.save_mode>0) {
               cout << "Saving clusters to '" << str_ofile << "'" << endl;
-              if (save_mode==1) myCluster.SaveSmallClusterData(str_ofile);
-              else if (save_mode==2) myCluster.SaveFullClusterData(str_ofile);
-              else cout << "unknown save_mode: " << save_mode << endl;
+              if (AnalyzeOptions.save_mode==1) myCluster.SaveSmallClusterData(str_ofile);
+              else if (AnalyzeOptions.save_mode==2) myCluster.SaveFullClusterData(str_ofile);
+              else cout << "unknown save_mode: " << AnalyzeOptions.save_mode << endl;
             }
             myTimer.Stop();
             cout << endl << "time: " << Utils::SecToTime(myTimer.SecElapsed()) << endl;
@@ -439,7 +449,6 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
       Utils::ReplaceExt(str_ifile,str_lfile,".lab",true);
       Utils::ReplaceExt(str_ifile,str_rfile,".dat",true);
       Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
-
 
 
       ifstream lfile(str_lfile);
@@ -568,18 +577,22 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
 
 int main(int argc,char *argv[])
 {
+    tAnalyzeOptions AnalyzeOptions;
+    AnalyzeOptions.bthres=0.; // biomass threshold: 0 t/ha
+    AnalyzeOptions.edge_dept=100; // edge effect dept 100m
+    AnalyzeOptions.mean_biomass=0.;
+    AnalyzeOptions.min_fragment=0; // minimum fragment size 0 ha
+    AnalyzeOptions.ncells=1; // number of interpolation cells
+    AnalyzeOptions.pixel_len=1; // pixel number for edge detection
+    AnalyzeOptions.rloss=0.5; // relative carbon loss in edge areas
+    AnalyzeOptions.save_mode=0;
+    AnalyzeOptions.write_mode=0;
+    AnalyzeOptions.check_consistency=false;
+
     int verbosity_level=1;
     int cmode=0;
-    int ncells=1;
-    int edge_dept=100;
+
     bool globcover=false;
-    int save_mode=0;
-    int write_mode=0;
-    int min_fragment=0;
-    int pixel_len=1;
-    double mean_biomass=0.0;
-    double bthres=0.0;
-    double rloss=0.5;
     int reduction_factor=500;
     bool force_overwrite=false;
     std::string str_ifile,str_ofile;
@@ -605,6 +618,7 @@ int main(int argc,char *argv[])
        cout << "--output      outputfile" << endl;
        cout << "--version     print version info" << endl;
        cout << "--agb-file    saatchi agb biomass file [t/ha]" << endl;
+       cout << "--check       check consistency of component analysis" << endl;
        cout << "--bthres      biomass threshold [t/ha] (default: 0 t/ha)"<<endl;
        cout << "--rloss       relative carbon loss in edge areas, default: 0.5" << endl;
        cout << "--force       force overwrite of files"<<endl;
@@ -625,7 +639,7 @@ int main(int argc,char *argv[])
         myGeoExtend.bottom=vextend[3];
       }
     }
-    if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=0;myCmdOpt.getopt(ncells);};
+    if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=0;myCmdOpt.getopt(AnalyzeOptions.ncells);};
     if (myCmdOpt.SearchOption("","--info")) cmode=1;
     if (myCmdOpt.SearchOption("-c","--convert")) cmode=2;
     if (myCmdOpt.SearchOption("-t","--test")) cmode=3;
@@ -633,37 +647,42 @@ int main(int argc,char *argv[])
     if (myCmdOpt.SearchOption("","--version")) cmode=5;
     if (myCmdOpt.SearchOption("","--force")) force_overwrite=true;
     if (myCmdOpt.SearchOption("-v","--verbose")) myCmdOpt.getopt(verbosity_level);
-    if (myCmdOpt.SearchOption("-d","--dept")) {myCmdOpt.getopt(edge_dept);};
-    if (myCmdOpt.SearchOption("-f","--fragment")) {myCmdOpt.getopt(min_fragment);};
-    if (myCmdOpt.SearchOption("-w","--write")) myCmdOpt.getopt(write_mode);
-    if (myCmdOpt.SearchOption("-s","--save")) myCmdOpt.getopt(save_mode);
-    if (myCmdOpt.SearchOption("-b","")) myCmdOpt.getopt(mean_biomass);
+    if (myCmdOpt.SearchOption("-d","--dept")) {myCmdOpt.getopt(AnalyzeOptions.edge_dept);};
+    if (myCmdOpt.SearchOption("-f","--fragment")) {myCmdOpt.getopt(AnalyzeOptions.min_fragment);};
+    if (myCmdOpt.SearchOption("-w","--write")) myCmdOpt.getopt(AnalyzeOptions.write_mode);
+    if (myCmdOpt.SearchOption("-s","--save")) myCmdOpt.getopt(AnalyzeOptions.save_mode);
+    if (myCmdOpt.SearchOption("-b","")) myCmdOpt.getopt(AnalyzeOptions.mean_biomass);
     if (myCmdOpt.SearchOption("-r","")) myCmdOpt.getopt(reduction_factor);
-    if (myCmdOpt.SearchOption("-p","--pixel")) myCmdOpt.getopt(pixel_len);
+    if (myCmdOpt.SearchOption("-p","--pixel")) myCmdOpt.getopt(AnalyzeOptions.pixel_len);
     if (myCmdOpt.SearchOption("-i","--input")) myCmdOpt.getopt(str_ifile);
     if (myCmdOpt.SearchOption("-o","--output")) myCmdOpt.getopt(str_ofile);
     if (myCmdOpt.SearchOption("","--agb-file")) myCmdOpt.getopt(str_bfile);
-    if (myCmdOpt.SearchOption("","--bthres")) myCmdOpt.getopt(bthres);
-    if (myCmdOpt.SearchOption("","--rloss")) myCmdOpt.getopt(rloss);
+    if (myCmdOpt.SearchOption("","--bthres")) myCmdOpt.getopt(AnalyzeOptions.bthres);
+    if (myCmdOpt.SearchOption("","--rloss")) myCmdOpt.getopt(AnalyzeOptions.rloss);
+    if (myCmdOpt.SearchOption("","--check")) AnalyzeOptions.check_consistency=true;
 
     if (verbosity_level>1) {
-       cout << "mode:      " << cmode << endl;
-       cout << "ncells:    " << ncells << endl;
-       cout << "dept:      " << edge_dept << endl;
-       cout << "fragment:  " << min_fragment << endl;
-       cout << "savemode:  " << save_mode << endl;
-       cout << "writemode: " << write_mode << endl;
-       cout << "extend:    " << myGeoExtend.top<<","<<myGeoExtend.left<<","<<myGeoExtend.right<<","<<myGeoExtend.bottom<<endl;
-       cout << "infile:   '" << str_ifile << "'" << endl;
-       cout << "outfile:  '" << str_ofile << "'" << endl;
-       cout << "agb-file: '" << str_bfile << "'" << endl;
-       cout << "bthres:    " << bthres << endl;
+       cout << "mode:          " << cmode << endl;
+       cout << "ncells:        " << AnalyzeOptions.ncells << endl;
+       cout << "edge dept:     " << AnalyzeOptions.edge_dept << endl;
+       cout << "mean biosmass: " << AnalyzeOptions.mean_biomass << endl;
+       cout << "min fragment:  " << AnalyzeOptions.min_fragment << endl;
+       cout << "pixel len:     " << AnalyzeOptions.pixel_len << endl;
+       cout << "rel. c-loss:   " << AnalyzeOptions.rloss << endl;
+       cout << "savemode:      " << AnalyzeOptions.save_mode << endl;
+       cout << "writemode:     " << AnalyzeOptions.write_mode << endl;
+       cout << "bthres:        " << AnalyzeOptions.bthres << endl;
+       cout << "extend:        " << myGeoExtend.top<<","<<myGeoExtend.left<<","<<myGeoExtend.right<<","<<myGeoExtend.bottom<<endl;
+       cout << "infile:        '" << str_ifile << "'" << endl;
+       cout << "outfile:       '" << str_ofile << "'" << endl;
+       cout << "agb-file:      '" << str_bfile << "'" << endl;
     }
+
     }
 
     if (cmode==0)
     {
-      ComandLine::Analyze(str_ifile,str_bfile,ncells,mean_biomass,bthres,rloss,edge_dept,min_fragment,pixel_len,write_mode,save_mode);
+      ComandLine::Analyze(str_ifile,str_bfile,AnalyzeOptions);
     } else if (cmode==1 || cmode==2)
     {
       ComandLine::Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);
