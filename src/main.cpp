@@ -9,6 +9,7 @@
 #include "analysis/proj.h"
 #include "model/rangecoder.h"
 #include "model/counter.h"
+#include "model/vle.h"
 
 void TestCM(std::string fname)
 {
@@ -400,9 +401,13 @@ void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int
            {
              myBRI.PrintInfo();
              if (cmode==2) { // convert bri to pgm
-                Utils::ReplaceExt(str_ifile,str_ofile,".bri");
                 cout << "converting to '" << str_ofile << "'" << endl;
-                myBRI.ConvertToPGM(myPGM,str_ofile);
+                if (Utils::isExt(str_ofile,".BRI")) {
+                  BRI outBRI;
+                  myBRI.ConvertToBRI(outBRI,str_ofile);
+                } else if (Utils::isExt(str_ofile,".PGM")) {
+                  myBRI.ConvertToPGM(myPGM,str_ofile);
+                } else cout << "unknown output extension" << endl;
              }
            } else {
                myASC.SetHandle(file);
@@ -573,6 +578,34 @@ void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const 
       } else cout << "error: could not open: '" << str_lfile << "'\n";
 
 }
+
+void TestBitIO()
+{
+    srand(time(0));
+    uint8_t buf[256];
+    BitBuffer bitout(buf),bitin(buf);
+    for (int i=0;i<17;i++) {
+      int r=rand() & 1;
+      cout << r;
+      bitout.PutBit(r);
+    }
+    int val;
+    val=113;bitout.PutBits(val,7);cout << "," << val;
+    val=0;bitout.PutRice(val,2);cout << "," << val;
+    val=(1<<23);bitout.PutRice(val,31);cout << "," << val;
+    bitout.Flush();
+    cout << ":" << bitout.GetBytesProcessed() << endl;
+    for (int i=0;i<17;i++) {
+      int bit;
+      bit = bitin.GetBit();
+    cout << bit;
+    }
+    val = bitin.GetBits(7);cout << "," << val;
+    val = bitin.GetRice(2);cout << "," << val;
+    val = bitin.GetRice(31);cout << "," << val;
+    cout << endl;
+}
+
 
 
 int main(int argc,char *argv[])

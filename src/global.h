@@ -105,6 +105,38 @@ class GeoUtils {
       }
 };
 
+class StringUtils {
+  public:
+    // works for ASCII
+    static std::string toupper(const std::string &s)
+    {
+      std::string ret(s.size(), char());
+        for(size_t i = 0; i < s.size(); ++i)
+          ret[i] = (s[i] <= 'z' && s[i] >= 'a') ? s[i]-('a'-'A') : s[i];
+      return ret;
+    }
+
+static void Tokenize(const string& str,
+                      vector<string>& tokens,
+                      const string& delimiters = " ")
+{
+    // Skip delimiters at beginning.
+    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+    // Find first "non-delimiter".
+    string::size_type pos     = str.find_first_of(delimiters, lastPos);
+
+    while (string::npos != pos || string::npos != lastPos)
+    {
+        // Found a token, add it to the vector.
+        tokens.push_back(str.substr(lastPos, pos - lastPos));
+        // Skip delimiters.  Note the "not_of"
+        lastPos = str.find_first_not_of(delimiters, pos);
+        // Find next "non-delimiter"
+        pos = str.find_first_of(delimiters, lastPos);
+    }
+}
+};
+
 class Utils {
   public:
     static void PrintWarning(const std::string &s) {
@@ -352,6 +384,16 @@ static void ReplaceExt(const std::string &ifile,std::string &ofile,std::string e
     }
   }
 }
+static bool isExt(const std::string &fname,const std::string &ext)
+{
+  size_t found=fname.find_last_of(".");
+  if (found!=string::npos) {
+    string text=fname.substr(found);
+    if (StringUtils::toupper(text)==StringUtils::toupper(ext)) return true;
+    else return false;
+  }
+  return false;
+}
 static std::string SecToTime(double time)
 {
   std::stringstream str_time;
@@ -376,38 +418,6 @@ static std::string SecToTime(double time)
     {
       return (val - (int)val > 0.0);
     }
-};
-
-class StringUtils {
-  public:
-    // works for ASCII
-    static std::string toupper(const std::string &s)
-    {
-      std::string ret(s.size(), char());
-        for(size_t i = 0; i < s.size(); ++i)
-          ret[i] = (s[i] <= 'z' && s[i] >= 'a') ? s[i]-('a'-'A') : s[i];
-      return ret;
-    }
-
-static void Tokenize(const string& str,
-                      vector<string>& tokens,
-                      const string& delimiters = " ")
-{
-    // Skip delimiters at beginning.
-    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
-    // Find first "non-delimiter".
-    string::size_type pos     = str.find_first_of(delimiters, lastPos);
-
-    while (string::npos != pos || string::npos != lastPos)
-    {
-        // Found a token, add it to the vector.
-        tokens.push_back(str.substr(lastPos, pos - lastPos));
-        // Skip delimiters.  Note the "not_of"
-        lastPos = str.find_first_not_of(delimiters, pos);
-        // Find next "non-delimiter"
-        pos = str.find_first_of(delimiters, lastPos);
-    }
-}
 };
 
 class Frame {
