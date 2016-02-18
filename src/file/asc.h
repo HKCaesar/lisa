@@ -41,7 +41,7 @@ template <typename T>
 class ASC : public IMGFile
 {
   public:
-    ASC(){};
+    ASC():nodata_avail(false){};
     int ReadHeader();
     void PrintInfo();
     int WriteExtend(const std::string &fname,int prec);
@@ -63,7 +63,8 @@ class ASC : public IMGFile
     int getLatPos(double ref_pos,double top);
 
     double ttop,tleft,tright,tbottom;
-    int nodataval;
+    bool nodata_avail;
+    int nodata_value;
     int pleft,pright,ptop,pbottom;
     int64_t hist[2];
 };

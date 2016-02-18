@@ -21,7 +21,7 @@ void ASC::PrintInfo()
 {
   std::cout << "ASC: " << width << "x" << height << endl;
   GeoUtils::PrintInfo(top,left,right,bottom,cellsize);
-  cout << "nodata val: " << nodataval << endl;
+  if (nodata_avail) cout << "nodata val: " << nodata_value << endl;
 }
 
 int ASC::ReadHeader()
@@ -33,26 +33,33 @@ int ASC::ReadHeader()
   if (ukey.compare("NCOLS")==0) width=std::stoi(val);
   else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
+  cout << line << endl;
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("NROWS")==0) height=std::stoi(val);
   else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
+  cout << line << endl;
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("XLLCORNER")==0) left=std::stod(val);
   else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
+  cout << line << endl;
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("YLLCORNER")==0) bottom=std::stod(val);
   else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
+  cout << line << endl;
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("CELLSIZE")==0) cellsize=std::stod(val);
   else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
+  cout << line << endl;
 
-  // should be fixed, because NODATA_VALUE is optional
+  // if we came this far, it's probably an .asc file
+  off_t posnodata=ftello64(file);
+
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
-  if (ukey.compare("NODATA_VALUE")==0) nodataval=std::stoi(val);
-  else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
+  if (ukey.compare("NODATA_VALUE")==0) {nodata_avail=true;nodata_value=std::stoi(val);}
+  else fseeko64(file,posnodata,0); // no nodata value
 
   const double delta_lat=cellsize*(double)height;
   const double delta_long=cellsize*(double)width;
@@ -126,7 +133,7 @@ int ASC::ReadRow()
       const int val=vecline[i];
       // binary read
       if (val==0 || val==1) {linebuf[j]=val;hist[val]++;}
-      else if (val!=nodataval) cout << "unknown pixel value: " << vecline[i] << " at line " << linenum << ", column " << i << endl;
+      else if (val!=nodata_value) cout << "unknown pixel value: " << vecline[i] << " at line " << linenum << ", column " << i << endl;
 
       #if 0
         if (val==99) linebuf[j]=0;
