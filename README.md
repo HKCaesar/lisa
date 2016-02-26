@@ -9,6 +9,5 @@ supported input raster formats: ESRI ASCII Grid (.asc), PNM (.pgm), (Geo)TIFF (.
 
 lisa is able to do
 - a single pass connected component analysis for all supported input formats
-- blend the analysis with biomass-files to estimate carbon loss
+- blend the analysis with biomass-files to estimate carbon loss including geo-referenced density maps
 - save a fully clustered image in a second pass using run length encoding
-- extract specific geographical referenced portions to analyze
