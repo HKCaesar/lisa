@@ -1,5 +1,5 @@
 # lisa
-large image spatial scale
+large image spatial analysis
 
 estimate the carbon loss due to forest fragmentation using remote sensing images
 
