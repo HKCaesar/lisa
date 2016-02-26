@@ -1,8 +1,9 @@
 #ifndef BITIO
 #define BITIO
 
+#if defined(__GNUC__) && defined(__x86_64__)
 // fast log2 on x86
-static inline uint32_t ilog2(const uint32_t x) {
+static inline uint32_t ilog2(uint32_t x) {
   uint32_t y;
   asm ( "\tbsr %1, %0\n"
       : "=r"(y)
@@ -10,7 +11,69 @@ static inline uint32_t ilog2(const uint32_t x) {
   );
   return y;
 }
+#else
+static inline uint32_t ilog2(uint32_t x) {
+  uint32_t y=0;
+  while (x>>=1) ++y;
+  return y;
+}
+#endif
 
+// 64-bit bitbuffer, fills bitbuf frow Low to High
+class BitBuffer64LH {
+  public:
+      BitBuffer64LH(uint8_t *buffer)
+      :pbuf((uint64_t*)buffer)
+      {
+        bitbuf=bitcnt=bytes_processed=0;
+      }
+      void PutBits(int val,int n)
+      {
+        bitbuf=bitbuf|(uint64_t(val) << bitcnt);
+        bitcnt+=n;
+        if (bitcnt>=64) {
+            *pbuf++=bitbuf; // flush 4-bytes
+            bitcnt-=64;
+            bitbuf=val>>(n-bitcnt);
+            bytes_processed+=8;
+        }
+      }
+      void Flush() { // we waste at most 7-bytes
+        if (bitcnt) {*pbuf++=bitbuf;bytes_processed+=8;};
+      }
+      int GetBits(int n) { //GetBits will read over eof
+        uint64_t val=bitbuf>>(64-bitcnt);
+        if (bitcnt<=n) {
+          bitbuf=*pbuf++; // refill the buffer
+          val|=bitbuf<<bitcnt; // add remaining bits
+          bitcnt+=64;
+          bytes_processed+=8;
+        }
+        bitcnt-=n;
+        return val&((1<<n)-1); // return masked val*/
+      }
+      void PutEliasGamma(int val)
+      {
+         int q=ilog2(val);
+         PutBits(0,q);
+         PutBits(1,1);
+         if (q) PutBits(val&((1<<q)-1),q);
+      }
+      int GetEliasGamma()
+      {
+         int q=0,r=0;
+         while (GetBits(1)==0) q++;
+         if (q) r=GetBits(q);
+         return (1<<q)+r;
+      }
+      int GetBytesProcessed(){return bytes_processed;};
+  private:
+    uint64_t *pbuf;
+    uint64_t bitbuf;
+    int bitcnt,bytes_processed;
+};
+
+// 8-bit bitbuffer, fills bitbuf from high to low
 class BitBuffer {
   public:
       BitBuffer(uint8_t *buffer)

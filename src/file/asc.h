@@ -1,7 +1,7 @@
 #ifndef ASC_H
 #define ASC_H
 
-#include "imgfile.h"
+#include "img.h"
 
 // Functions for reading esri ASCII raster data
 
@@ -38,18 +38,25 @@ template <typename T>
   return (vidx==vlen);
  };
 
-class ASC : public IMGFile
+class IMGASC : public IMG
 {
   public:
-    ASC():nodata_avail(false){};
+    IMGASC():nodata_avail(false){};
+    double getTop(){return ttop;};
+    double getLeft(){return tleft;};
+    double getBottom(){return tbottom;};
+    double getRight(){return tright;};
     int ReadHeader();
+
+    IMGTYPE GetType(){return TYPEASC;};
+
     void PrintInfo();
     int WriteExtend(const std::string &fname,int prec);
-    void StartReading();
-    void StopReading();
+    void StartReader();
+    void StopReader();
     void SetExtend(const geoExtend &myExtend);
-    uint8_t *linebuf;
-    int ReadRow();
+    int ReadRow(uint8_t *buf);
+    int ReadRow(){return ReadRow(rowbuffer);};
     int getExtendWidth(){return pright-pleft;};
     int getExtendHeight(){return pbottom-ptop;};
   protected:

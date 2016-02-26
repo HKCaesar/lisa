@@ -1,6 +1,6 @@
 #include "pgm.h"
 
-void PGM::ReadPGMLine(std::string &line)
+void IMGPGM::ReadPGMLine(std::string &line)
 {
   char c;
   line.clear();
@@ -16,14 +16,14 @@ void PGM::ReadPGMLine(std::string &line)
 
 }
 
-void PGM::SeekPGMLine(off64_t y)
+void IMGPGM::SeekPGMLine(off64_t y)
 {
   off64_t pos=hdrpos+((off64_t)width*y);
   fseeko64(file,pos,SEEK_SET);
 }
 
 
-int PGM::ReadHeader()
+int IMGPGM::ReadHeader()
 {
   std::string line;
   fsize=Utils::GetFileSize(file);
@@ -47,7 +47,7 @@ int PGM::ReadHeader()
   }
 }
 
-int PGM::Create(std::string &str_ofile)
+int IMGPGM::Create(std::string &str_ofile)
 {
   file=fopen(str_ofile.c_str(),"wb");
   if (file)
@@ -70,12 +70,12 @@ int PGM::Create(std::string &str_ofile)
   } else return 1;
 }
 
-void PGM::Close()
+void IMGPGM::Close()
 {
   fclose(file);
 }
 
-void PGM::PrintInfo()
+void IMGPGM::PrintInfo()
 {
   cout << endl << "PGM";
   if (valid) cout << "(valid)";
@@ -84,27 +84,27 @@ void PGM::PrintInfo()
   cout << "filesize: " << (fsize>>20) << " MB, data start: " << hdrpos << " bytes" << endl;
 }
 
-void PGM::StartReading()
+void IMGPGM::StartReader()
 {
-  linebuf=new uint8_t[width];
+  rowbuffer=new uint8_t[width];
   if (ftello64(file)!=hdrpos) fseeko64(file,hdrpos,SEEK_SET);
 }
 
-void PGM::StopReading()
+void IMGPGM::StopReader()
 {
-  if (linebuf) delete []linebuf,linebuf=0;
+  if (rowbuffer) delete []rowbuffer,rowbuffer=0;
 }
 
-bool PGM::ReadRow()
+int IMGPGM::ReadRow(uint8_t *buf)
 {
-  size_t nread=fread(linebuf,1,width,file);
+  size_t nread=fread(buf,1,width,file);
   if (nread!=(size_t)width) {cout << "error: could not read (" << nread << " from " << width << ")" << endl;return false;};
-  return true;
+  return nread;
 }
 
-bool PGM::WriteRow()
+int IMGPGM::WriteRow()
 {
-  size_t nwrite=fwrite(linebuf,1,width,file);
+  size_t nwrite=fwrite(rowbuffer,1,width,file);
   if (nwrite!=(size_t)width) {cout << "error: could not write (" << nwrite << " from " << width << ")" << endl;return false;};
-  return true;
+  return nwrite;
 }

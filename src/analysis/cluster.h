@@ -16,8 +16,8 @@ struct tcelldata
 class BRIOptions
 {
  public:
-  BRIOptions(BRI &myBRI,Projection &myProj,BM &myBiomass)
-  :BRIFile(myBRI),Proj(myProj),BMass(myBiomass)
+  BRIOptions(IMG &IMGFile,Projection &myProj,BM &myBiomass)
+  :myIMG(IMGFile),Proj(myProj),BMass(myBiomass)
   {
     pixel_len=1;
     write_clusterlabel=0;
@@ -26,7 +26,7 @@ class BRIOptions
     relative_carbon_loss=0.5;
     verbose=false;
   };
-  BRI &BRIFile;
+  IMG &myIMG;
   Projection &Proj;
   BM &BMass;
   int pixel_len,write_clusterlabel;
@@ -69,7 +69,7 @@ class ClusterBRI
     BRIOptions opt;
 
     int bri_width;
-    uint8_t *rowbuffer;
+    //uint8_t *rowbuffer;
     int64_t **wrows; // prev, cur, next
     std::vector <int64_t> cdata;
     std::vector <tcelldata> clusterdata;

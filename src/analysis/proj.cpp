@@ -24,8 +24,8 @@ int Projection::ReadCoordinateFile(std::string &fname)
       }
     }
     myfile.close();
+    #if 0
     cout << endl;
-    CalculateGeoDelta();
     double dwidth=CalcDist_Haversine(top+(bottom-top)/2,left,top+(bottom-top)/2,right);
     double dheight=CalcDist_Haversine(top,left,bottom,left);
     double pixel_area=(dwidth/(double)width)*(dheight/(double)height);
@@ -37,8 +37,14 @@ int Projection::ReadCoordinateFile(std::string &fname)
     mean_pixelarea=pixel_area;
     cout << "vincenty:  size "<<(dwidth/1000.0) << "km x " << (dheight/1000.0) << "km, " << " pixel area: " << pixel_area << " m^2" << endl;
     cout << endl;
+    #endif
     return 0;
   } else return 1;
+}
+
+void Projection::SetProjection(double ttop,double tleft,double tbottom,double tright)
+{
+  top=ttop;left=tleft;bottom=tbottom;right=tright;
 }
 
 double Projection::CalcDist_Haversine(double lat1,double long1,double lat2,double long2)

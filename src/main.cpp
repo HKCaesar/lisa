@@ -3,6 +3,7 @@
 #include "file/pgm.h"
 #include "file/bri.h"
 #include "file/asc.h"
+#include "file/tiff.h"
 #include "file/bm.h"
 #include "bmatrix.h"
 #include "analysis/cluster.h"
@@ -54,7 +55,7 @@ int TestConsistence(int dimx,int dimy,double p,int verbose=0)
   if (verbose) m.Print();
   if (verbose) cout << "writing matrix to bri-file..." << endl;
 
-  BRI myBRI;
+  IMGBRI myBRI;
   myBRI.SetWidth(dimx);
   myBRI.SetHeight(dimy);
   if (myBRI.Create(fname)==0)
@@ -207,6 +208,9 @@ void PrintVersion(int mode=0)
   #endif
   cout << " on " << __DATE__ << endl;
   }
+  #ifdef TIFF_SUPPORT
+    cout << endl << TIFFGetVersion() << endl;
+  #endif
 }
 
 class CmdOptions {
@@ -299,137 +303,154 @@ class ComandLine {
     float closs;
   };
   public:
-      static void Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions);
-      static void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
-      static void TestConsistency();
-      static void Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
+    void Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions);
+    void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
+    void TestConsistency();
+    void Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
+    int OpenInputRaster(const std::string str_ifile);
+  private:
+    IMGPGM myPGM;
+    IMGBRI myBRI;
+    IMGASC myASC;
+    IMGTIFF myTIFF;
+    IMG *myIMG;
+    FILE *file;
 };
 
-void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions)
+int ComandLine::OpenInputRaster(const std::string str_ifile)
 {
-  FILE *file=fopen(str_ifile.c_str(),"rb");
+  myIMG=nullptr;
+
+  file=fopen(str_ifile.c_str(),"rb");
   cout << "open file: '" << str_ifile << "': ";
-  if (file)  {
-        cout << "ok." << endl;
-        BRI myBRI;
-        myBRI.SetHandle(file);
-        if (myBRI.ReadHeader()==0)
-        {
-          std::string str_pfile;
-          Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
+  if (file) {
+    cout << "ok." << endl;
 
-          Projection myProj(myBRI.GetWidth(),myBRI.GetHeight());
-          myBRI.PrintInfo();
-          if (myProj.ReadCoordinateFile(str_pfile)==0) {
-            cout << endl;
-            Timer myTimer;
-            myTimer.Start();
-            myProj.CalculateCellSize();
-            myProj.GenerateInterpolation(AnalyzeOptions.ncells);
+    if (myIMG==nullptr) {// input is pgm
+      myPGM.SetHandle(file);
+      if (myPGM.ReadHeader()==0) myIMG=&myPGM;
+    };
 
-            BM myBiomass(AnalyzeOptions.mean_biomass);
+    if (myIMG==nullptr) {// input is bri
+      myBRI.SetHandle(file);
+      if (myBRI.ReadHeader()==0) myIMG=&myBRI;
+    };
 
-            if (str_bfile.length()) {
-                Timer myTimer;
-                myTimer.Start();
-                if (!myBiomass.ReadAGBFile(str_bfile,AnalyzeOptions.bthres)) {
-                    cerr << "  warning: could not open file: '" << str_bfile << "'\n";
-                    return;
-                }
-                myTimer.Stop();
-                cout << myTimer.SecElapsed() << endl;
-                myBiomass.SetGeoRef(myProj.getLeft(),myProj.getTop(),myProj.getCellsize()); // setup geo-reference for Biomass-Card
-            };
+    if (myIMG==nullptr) {// input is asc
+      myASC.SetHandle(file);
+      if (myASC.ReadHeader()==0) myIMG=&myASC;
+    };
 
-            BRIOptions options(myBRI,myProj,myBiomass);
-
-            options.edge_dept=AnalyzeOptions.edge_dept;
-            options.relative_carbon_loss=AnalyzeOptions.rloss;
-            options.min_fragment_size=AnalyzeOptions.min_fragment;
-            options.pixel_len=AnalyzeOptions.pixel_len;
-            options.write_clusterlabel=AnalyzeOptions.write_mode;
-            options.verbose=true;
-            if (options.write_clusterlabel>0) {
-                Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
-                Utils::ReplaceExt(str_ifile,options.str_clusterfile2,".bin",true);
-                Utils::ReplaceExt(str_ifile,options.str_labelfile,".lab",true);
-            }
-            ClusterBRI myCluster(options);
-            myCluster.ClusterAnalyzation();
-
-            if (AnalyzeOptions.check_consistency) myCluster.CheckClusters();
-
-            std::string str_ofile;
-            Utils::ReplaceExt(str_ifile,str_ofile,".csv",true);
-            if (AnalyzeOptions.save_mode>0) {
-              cout << "Saving clusters to '" << str_ofile << "'" << endl;
-              if (AnalyzeOptions.save_mode==1) myCluster.SaveSmallClusterData(str_ofile);
-              else if (AnalyzeOptions.save_mode==2) myCluster.SaveFullClusterData(str_ofile);
-              else cout << "unknown save_mode: " << AnalyzeOptions.save_mode << endl;
-            }
-            myTimer.Stop();
-            cout << endl << "time: " << Utils::SecToTime(myTimer.SecElapsed()) << endl;
-          } else cout << "missing coordinate file: '" << str_pfile << "'!" << endl;
-
-        } else cout << "no valid file type found!" << endl;
+    if (myIMG==nullptr) { // use libtiff own file handling
         fclose(file);
-      } else cout << "not found!";
+        if (myTIFF.ReadHeader(str_ifile.c_str())==0) myIMG=&myTIFF;
+    }
+    return 0;
+  } else return 1;
 }
 
+// connected component analysis of a supported raster file
+void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions)
+{
+  if (OpenInputRaster(str_ifile)==0) {
+    if (myIMG!=nullptr) {
+      myIMG->PrintInfo();
+
+      Projection myProj(myIMG->GetWidth(),myIMG->GetHeight());
+
+      // if we have an asc file, use the coordiantes from meta-data
+      if (myIMG->GetType()==IMG::TYPEASC) {
+        myProj.SetProjection(myASC.getTop(),myASC.getLeft(),myASC.getBottom(),myASC.getRight());
+      } else { // open coordinate file
+        std::string str_pfile;
+        Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
+        if (myProj.ReadCoordinateFile(str_pfile)!=0) {
+          cout << "missing coordinate file: '" << str_pfile << "'!" << endl;
+          myIMG->Close();
+          return;
+        }
+      }
+
+      Timer myTimer;
+      myTimer.Start();
+
+      myProj.CalculateCellSize();
+      myProj.PrintInfo();
+      cout << endl;
+      myProj.GenerateInterpolation(AnalyzeOptions.ncells);
+
+      // read biomass file
+      BM myBiomass(AnalyzeOptions.mean_biomass);
+
+      if (str_bfile.length()) {
+        Timer myTimer;
+        myTimer.Start();
+        if (!myBiomass.ReadAGBFile(str_bfile,AnalyzeOptions.bthres)) {
+          cerr << "  warning: could not open file: '" << str_bfile << "'\n";
+          return;
+        }
+        myTimer.Stop();
+        cout << myTimer.SecElapsed() << endl;
+        myBiomass.SetGeoRef(myProj.getLeft(),myProj.getTop(),myProj.getCellsize()); // setup geo-reference for Biomass-Card
+      };
+
+      BRIOptions options(*myIMG,myProj,myBiomass);
+
+      options.edge_dept=AnalyzeOptions.edge_dept;
+      options.relative_carbon_loss=AnalyzeOptions.rloss;
+      options.min_fragment_size=AnalyzeOptions.min_fragment;
+      options.pixel_len=AnalyzeOptions.pixel_len;
+      options.write_clusterlabel=AnalyzeOptions.write_mode;
+      options.verbose=true;
+      if (options.write_clusterlabel>0) {
+            Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
+            Utils::ReplaceExt(str_ifile,options.str_clusterfile2,".bin",true);
+            Utils::ReplaceExt(str_ifile,options.str_labelfile,".lab",true);
+      }
+      ClusterBRI myCluster(options);
+      myCluster.ClusterAnalyzation();
+
+      if (AnalyzeOptions.check_consistency) myCluster.CheckClusters();
+
+      std::string str_ofile;
+      Utils::ReplaceExt(str_ifile,str_ofile,".csv",true);
+      if (AnalyzeOptions.save_mode>0) {
+        cout << "Saving clusters to '" << str_ofile << "'" << endl;
+        if (AnalyzeOptions.save_mode==1) myCluster.SaveSmallClusterData(str_ofile);
+        else if (AnalyzeOptions.save_mode==2) myCluster.SaveFullClusterData(str_ofile);
+        else cout << "unknown save_mode: " << AnalyzeOptions.save_mode << endl;
+      }
+      myTimer.Stop();
+      cout << endl << "time: " << Utils::SecToTime(myTimer.SecElapsed()) << endl;
+
+      myIMG->Close();
+    } else cerr << "  warning: unsupported raster input format" << endl;
+  } else cout << "not found!" << endl;
+}
+
+
+// convert given raster format pgm/asc/bri to bri
+// output-pgm is currently broken
 void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool force_overwrite,const geoExtend &myExtend)
 {
-      FILE *file=fopen(str_ifile.c_str(),"rb");
-      cout << "open file: '" << str_ifile << "': ";
-      if (file)
-      {
-         cout << "ok." << endl;
-         PGM myPGM;
-         BRI myBRI;
-         ASC myASC;
-         myPGM.SetHandle(file);
-         if (myPGM.ReadHeader()==0)
-         {
-           myPGM.PrintInfo();
-           if (cmode==2) { // convert pgm to bri
-            Utils::ReplaceExt(str_ifile,str_ofile,".bri");
-            cout << "converting to '" << str_ofile << "'" << endl;
-            myBRI.ConvertFromPGM(myPGM,str_ofile,globcover);
-           }
-         } else {
-           myBRI.SetHandle(file);
-           if (myBRI.ReadHeader()==0)
-           {
-             myBRI.PrintInfo();
-             if (cmode==2) { // convert bri to pgm
-                cout << "converting to '" << str_ofile << "'" << endl;
-                if (Utils::isExt(str_ofile,".BRI")) {
-                  BRI outBRI;
-                  myBRI.ConvertToBRI(outBRI,str_ofile);
-                } else if (Utils::isExt(str_ofile,".PGM")) {
-                  myBRI.ConvertToPGM(myPGM,str_ofile);
-                } else cout << "unknown output extension" << endl;
-             }
-           } else {
-               myASC.SetHandle(file);
-               if (myASC.ReadHeader()==0) {
-                  myASC.PrintInfo();
-                  if (cmode==2) {
-                    myASC.SetExtend(myExtend);
-                    std::string str_efile;
-                    Utils::ReplaceExt(str_ofile,str_efile,".txt");
-                    cout << "saving geo-extend to '" << str_efile << "'\n";
-                    if (Utils::OpenWriteCheck(str_efile,force_overwrite)) myASC.WriteExtend(str_efile,8);
-                    else return;
+  if (OpenInputRaster(str_ifile)==0) {
+    if (myIMG!=nullptr) {
+      myIMG->PrintInfo();
 
-                    Utils::ReplaceExt(str_ifile,str_ofile,".bri");
-                    cout << "converting to '" << str_ofile << "'\n";
-                    myBRI.ConvertFrom(myASC,str_ofile);
-                  }
-               } else cout << "error: unknown file format\n";
-           }
-         }
-         fclose(file);
-      } else cout << "not found!";
+      if (cmode==2) {
+        if (myIMG->GetType()==IMG::TYPEASC) { // save geo-referencing
+          myASC.SetExtend(myExtend);
+          std::string str_efile;
+          Utils::ReplaceExt(str_ofile,str_efile,".txt");
+          cout << "saving geo-extend to '" << str_efile << "'\n";
+          if (Utils::OpenWriteCheck(str_efile,force_overwrite)) myASC.WriteExtend(str_efile,8);
+        }
+        IMGBRI outBRI;
+        outBRI.ConvertToBRI(*myIMG,str_ofile);
+      }
+      myIMG->Close();
+    } else cerr << "  warning: unsupported raster input format" << endl;
+  } else cout << "not found!" << endl;
 }
 
 void ComandLine::TestConsistency()
@@ -610,6 +631,25 @@ void TestBitIO()
 
 int main(int argc,char *argv[])
 {
+    #if 0
+    srand(time(0));
+    uint8_t buf[1024];
+    BitBuffer64LH bout(buf),bin(buf);
+    int num=32;
+    for (int i=0;i<num;i++) {
+       int b=(rand()%15)+1;
+       bout.PutEliasGamma(b);
+       cout << b << " ";
+    }
+    bout.Flush();
+    cout << endl << bout.GetBytesProcessed() << endl;
+    for (int i=0;i<num;i++) {
+       int b=bin.GetEliasGamma();
+       cout << b << " ";
+    }
+    cout << endl << bin.GetBytesProcessed() << endl;
+    return 0;
+    #endif
     tAnalyzeOptions AnalyzeOptions;
     AnalyzeOptions.bthres=0.; // biomass threshold: 0 t/ha
     AnalyzeOptions.edge_dept=100; // edge effect dept 100m
@@ -635,18 +675,18 @@ int main(int argc,char *argv[])
     if (argc < 2)
     {
        cout << "lisa [-/--options]" << endl << endl;
-       cout << "-a,--analyze  analyze connected components of a bri file (#-area cells)" << endl;
-       cout << "-c,--convert  convert [pgm/bri/asc] file into [bri] file (g=globcover)" << endl;
+       cout << "-a,--analyze  analyze connected components of a raster file (#-area cells)" << endl;
+       cout << "-c,--convert  convert raster file into [bri] file (g=globcover)" << endl;
        cout << "-d,--dept     edge effect dept of d [m], default: 100" << endl;
        cout << "-e,--extend   top,left,right,bottom" << endl;
        cout << "-f,--fragment statistics using minimum fragment size in [ha] (default: 0)" << endl;
-       cout << "-i,--info     info about [pgm/bri/asc] file" << endl;
        cout << "-m,--map      produce a density map, out of bin/lab file" << endl;
        cout << "-p,--pixel    minimum pixel length for edge detection, default: 1" << endl;
        cout << "-s,--save     save results to .csv file, 1=small, 2=large" << endl;
        cout << "-t,--test     test consistence of lisa" << endl;
        cout << "-v,--verbose  verbosity level [0-2] (default: 1)" << endl;
        cout << "-w,--write    write clusterlabel data, 1=labels+closs, 2=closs" << endl;
+       cout << "--info        info about raster file" << endl;
        cout << "--input       inputfile" << endl;
        cout << "--output      outputfile" << endl;
        cout << "--version     print version info" << endl;
@@ -657,6 +697,7 @@ int main(int argc,char *argv[])
        cout << "--force       force overwrite of files"<<endl;
        cout << "-r[#]   reduction factor for use with --map option, default: 500"<<endl;
        cout << "-b[#]   mean biomass for use with --analyze"<<endl;
+       cout << endl << "supported raster file formats: asc, pgm, tiff, bri" << endl;
        return 1;
     } else {
     CmdOptions myCmdOpt(argc,argv);
@@ -713,18 +754,19 @@ int main(int argc,char *argv[])
 
     }
 
+    ComandLine myCmdLine;
     if (cmode==0)
     {
-      ComandLine::Analyze(str_ifile,str_bfile,AnalyzeOptions);
+      myCmdLine.Analyze(str_ifile,str_bfile,AnalyzeOptions);
     } else if (cmode==1 || cmode==2)
     {
-      ComandLine::Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);
+      myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);
     } else if (cmode==3)
     {
-      ComandLine::TestConsistency();
+      myCmdLine.TestConsistency();
     } else if (cmode==4)
     {
-      ComandLine::Reduce(str_ifile,reduction_factor,myGeoExtend);
+      myCmdLine.Reduce(str_ifile,reduction_factor,myGeoExtend);
     } else if (cmode==5) {
       PrintVersion(1);
     }

@@ -1,9 +1,9 @@
 #include "cluster.h"
 
 ClusterBRI::ClusterBRI(BRIOptions &Options)
-:opt(Options),bri_width(opt.BRIFile.GetWidth())
+:opt(Options),bri_width(opt.myIMG.GetWidth())
 {
-  rowbuffer=new uint8_t[bri_width];
+  //rowbuffer=new uint8_t[bri_width];
   lookahead_rows=Options.pixel_len;
   bufrows=(2*lookahead_rows)+1;
   wrows=new int64_t*[bufrows];
@@ -14,7 +14,7 @@ ClusterBRI::ClusterBRI(BRIOptions &Options)
 
 ClusterBRI::~ClusterBRI()
 {
-  if (rowbuffer) delete []rowbuffer,rowbuffer=0;
+  //if (rowbuffer) delete []rowbuffer,rowbuffer=0;
   for (int i=0;i<bufrows;i++) {if (wrows[i]) delete []wrows[i],wrows[i]=0;};
   delete []wrows,wrows=0;
 }
@@ -439,9 +439,9 @@ void ClusterBRI::ClusterAnalyzation()
   max_border_pixel=0;
   cdata.resize(0);
   clusterdata.resize(0);
-  opt.BRIFile.Start();
+  opt.myIMG.StartReader();
   int width=bri_width;
-  endrow=opt.BRIFile.GetHeight();
+  endrow=opt.myIMG.GetHeight();
   //endrow=10000;
 
   max_cluster_label=0;
@@ -452,8 +452,12 @@ void ClusterBRI::ClusterAnalyzation()
   int lookahead=0;
   for (lookahead=0;lookahead<lookahead_rows;lookahead++) // buffer lookahead_rows
   {
-    opt.BRIFile.ReadRow(rowbuffer);
-    for (int i=0;i<width;i++) wrows[lookahead][i]=rowbuffer[i];
+    opt.myIMG.ReadRow();
+    for (int i=0;i<width;i++) {
+      uint8_t val=opt.myIMG.rowbuffer[i];
+      if (val!=0 && val!=1) {Utils::PrintWarning("invalid input value: "+std::to_string(val));return;}
+      wrows[lookahead][i]=val;
+    }
   }
   int row_ptr=lookahead;
   int cur_ptr=0;
@@ -461,8 +465,12 @@ void ClusterBRI::ClusterAnalyzation()
   for (row=0;row<endrow;row++)
   {
       if (row < endrow-lookahead_rows) { // read in the next row, process cur_row
-        opt.BRIFile.ReadRow(rowbuffer);
-        for (int i=0;i<width;i++) wrows[row_ptr][i]=rowbuffer[i];
+        opt.myIMG.ReadRow();
+        for (int i=0;i<width;i++) {
+          uint8_t val=opt.myIMG.rowbuffer[i];
+          if (val!=0 && val!=1) {Utils::PrintWarning("invalid input value: "+std::to_string(val));return;}
+          wrows[row_ptr][i]=val;
+        }
       }
       ProcessRow(row,cur_ptr);
 
@@ -473,7 +481,7 @@ void ClusterBRI::ClusterAnalyzation()
   }
 
   if (opt.verbose) {PrintProgress(endrow,endrow);cout << endl;};
-  opt.BRIFile.Stop();
+  opt.myIMG.StopReader();
 
   if (opt.write_clusterlabel==1) {
     fclose(clusterfile1);
@@ -504,7 +512,7 @@ void ClusterBRI::ClusterAnalyzation()
   cout << "mean area:           " << std::fixed << std::setprecision(4) << myStats.mean_area << " ha" << endl;
   cout << "max area:            " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.max_area) << " 10^6 ha" << endl;
   cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (pixel-len: " << opt.pixel_len << ")" << endl;
-  cout << "max edge len:        " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm((double)max_border_pixel*sqrt(opt.Proj.GetMeanPixelArea())) << " 10^6 km" << endl;
+  //cout << "max edge len:        " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm((double)max_border_pixel*sqrt(opt.Proj.GetMeanPixelArea())) << " 10^6 km" << endl;
   cout << "edge area (DE):      " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_de) << " 10^6 ha" << ", edge effect dept: " << std::fixed << std::setprecision(1) << opt.edge_dept << " m" << endl;
   if (myStats.total_area)
   cout << "edge area/area:      " << std::fixed << std::setprecision(2) << (myStats.total_edge_area_de/myStats.total_area*100) << " %" << endl;

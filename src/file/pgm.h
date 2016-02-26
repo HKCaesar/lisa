@@ -2,22 +2,23 @@
 #define PGM_H
 
 #include "..\global.h"
-#include "imgfile.h"
+#include "img.h"
 
-class PGM : public IMGFile {
+class IMGPGM : public IMG {
   public:
-    PGM():max_gray(0),valid(false){};
+    IMGPGM():max_gray(0),valid(false){};
     void Close();
     void PrintInfo();
     int GetMaxGray(){return max_gray;};
     off64_t GetSize(){return fsize;};
-    void StartReading();
-    void StopReading();
+    void StartReader();
+    void StopReader();
     int Create(std::string &fname);
-    bool ReadRow();
-    bool WriteRow();
+    int ReadRow(uint8_t *buf);
+    IMGTYPE GetType(){return TYPEPGM;};
+    int ReadRow(){return ReadRow(rowbuffer);};
+    int WriteRow();
     int ReadHeader();
-    uint8_t *linebuf;
   protected:
     void ReadPGMLine(std::string &line);
     void SeekPGMLine(off64_t y);

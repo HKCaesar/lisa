@@ -4,7 +4,7 @@
 #include "asc.h"
 
 // Read Saatchi-Biomass files, extension of ASC-Class
-class BM : public ASC
+class BM : public IMGASC
 {
   public:
     BM(double mean_biomass_ha)

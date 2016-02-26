@@ -1,6 +1,6 @@
 #include "asc.h"
 
-bool ASC::getLine(std::string &line)
+bool IMGASC::getLine(std::string &line)
 {
   int ch;
   line.clear();
@@ -17,42 +17,42 @@ bool ASC::getLine(std::string &line)
   return true;
 }
 
-void ASC::PrintInfo()
+void IMGASC::PrintInfo()
 {
   std::cout << "ASC: " << width << "x" << height << endl;
-  GeoUtils::PrintInfo(top,left,right,bottom,cellsize);
+  //GeoUtils::PrintInfo(top,left,right,bottom,cellsize);
   if (nodata_avail) cout << "nodata val: " << nodata_value << endl;
 }
 
-int ASC::ReadHeader()
+int IMGASC::ReadHeader()
 {
   std::string ukey,key,val;
   width=height=pleft=pright=ptop=pbottom=0;
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("NCOLS")==0) width=std::stoi(val);
-  else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
+  else return 1;
+  //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
-  cout << line << endl;
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("NROWS")==0) height=std::stoi(val);
-  else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
-  cout << line << endl;
+  else return 1;
+  //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("XLLCORNER")==0) left=std::stod(val);
-  else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
-  cout << line << endl;
+  else return 1;
+  //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("YLLCORNER")==0) bottom=std::stod(val);
-  else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
-  cout << line << endl;
+  return 1;
+  //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("CELLSIZE")==0) cellsize=std::stod(val);
-  else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
-  cout << line << endl;
+  return 1;
+  //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   // if we came this far, it's probably an .asc file
   off_t posnodata=ftello64(file);
@@ -74,17 +74,17 @@ int ASC::ReadHeader()
   return 0;
 }
 
-int ASC::getLongPos(double ref_pos,double left)
+int IMGASC::getLongPos(double ref_pos,double left)
 {
   return round((ref_pos-left)/cellsize);
 }
 
-int ASC::getLatPos(double ref_pos,double top)
+int IMGASC::getLatPos(double ref_pos,double top)
 {
   return round((-ref_pos+top)/cellsize);
 }
 
-int ASC::WriteExtend(const std::string &fname,int prec)
+int IMGASC::WriteExtend(const std::string &fname,int prec)
 {
   ofstream ofile(fname);
   if (ofile.is_open()) {
@@ -93,25 +93,26 @@ int ASC::WriteExtend(const std::string &fname,int prec)
     ofile << "left=" << Utils::ConvertFixed(tleft,prec)<<"\n";
     ofile << "right=" << Utils::ConvertFixed(tright,prec)<<"\n";
     ofile << "bottom=" << Utils::ConvertFixed(tbottom,prec)<<"\n";
+    ofile.close();
     return 0;
   } else return 1;
 }
 
 // reframe the extend
-void ASC::SetExtend(const geoExtend &myExtend)
+void IMGASC::SetExtend(const geoExtend &myExtend)
 {
   Frame::SetExtend(left,top,cellsize,myExtend,width,height,pleft,ptop,pright,pbottom);
 }
 
-void ASC::StopReading()
+void IMGASC::StopReader()
 {
-  if (linebuf) delete []linebuf,linebuf=0;
+  if (rowbuffer) delete []rowbuffer,rowbuffer=0;
 }
 
-void ASC::StartReading()
+void IMGASC::StartReader()
 {
   hist[0]=hist[1]=0;
-  linebuf=new uint8_t[getExtendWidth()];
+  rowbuffer=new uint8_t[getExtendWidth()];
   vecline.resize(width);
   linenum=0;
 
@@ -122,19 +123,18 @@ void ASC::StartReading()
   }
 }
 
-int ASC::ReadRow()
+int IMGASC::ReadRow(uint8_t *buf)
 {
   getLine(line);
   if (!Utils::SplitTokenInt(line,vecline)) cout << "error reading file at line: " << linenum << endl;
   int j=0;
   for (int i=pleft;i<pright;i++)
   {
-      linebuf[j]=0;
+      buf[j]=0;
       const int val=vecline[i];
       // binary read
-      if (val==0 || val==1) {linebuf[j]=val;hist[val]++;}
-      else if (val!=nodata_value) cout << "unknown pixel value: " << vecline[i] << " at line " << linenum << ", column " << i << endl;
-
+      if (val==0 || val==1) {buf[j]=val;hist[val]++;}
+      else if (!nodata_avail || (nodata_avail && val!=nodata_value)) cout << "unknown pixel value: " << vecline[i] << " at line " << linenum << ", column " << i << endl;
       #if 0
         if (val==99) linebuf[j]=0;
         else if (val==11) linebuf[j]=1;
