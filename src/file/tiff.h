@@ -8,12 +8,6 @@
 #include "img.h"
 #include "tiffio.h"
 
-static void myTIFFWarningHandler(const char* module, const char* fmt,va_list ap)
-{
-  vprintf(fmt,ap);
-  printf("\n");
-}
-
 class IMGTIFF : public IMG {
   public:
     IMGTIFF();

@@ -1,5 +1,11 @@
 #include "tiff.h"
 
+static void myTIFFWarningHandler(const char* module, const char* fmt,va_list ap)
+{
+  vprintf(fmt,ap);
+  printf("\n");
+}
+
 IMGTIFF::IMGTIFF()
 :tif((TIFF*)0),
 scanline_size(0),tiles_size(0),tilewidth(0),tileheight(0),nrow(0),

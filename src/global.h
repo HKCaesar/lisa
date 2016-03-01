@@ -20,7 +20,7 @@ using namespace std;
 // enable to compile against libtiff
 #define TIFF_SUPPORT
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.97.4 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.98.1 (c) 2014-2016 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -358,6 +358,22 @@ static bool SplitTokenInt(const std::string &str,std::vector<int> &vec)
       val+=((uint64_t)buf[6]<<48);
       val+=((uint64_t)buf[7]<<56);
       return val;
+    }
+    static double GetDouble(uint8_t *buf)
+    {
+      return *((double*)buf);
+    }
+    static void PutDouble(uint8_t *buf,double val)
+    {
+      char *pval=(char*)(&val);
+      buf[0]=pval[0];
+      buf[1]=pval[1];
+      buf[2]=pval[2];
+      buf[3]=pval[3];
+      buf[4]=pval[4];
+      buf[5]=pval[5];
+      buf[6]=pval[6];
+      buf[7]=pval[7];
     }
     static off64_t GetFileSize(FILE *ifile)
     {

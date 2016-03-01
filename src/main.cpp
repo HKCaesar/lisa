@@ -294,7 +294,8 @@ bool CmdOptions::SearchOption(const std::string &sshort,const std::string &&sslo
 struct tAnalyzeOptions {
   double mean_biomass,bthres,rloss;
   int ncells,edge_dept,min_fragment,pixel_len,write_mode,save_mode;
-  bool check_consistency;
+  int forest_cover_threshold;
+  bool check_consistency,flush_clusters;
 };
 
 class ComandLine {
@@ -303,6 +304,7 @@ class ComandLine {
     float closs;
   };
   public:
+    enum METHOD {NONE,ANALYZE,CONVERT,INFO,MAP,TEST,VERSION};
     void Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions);
     void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
     void TestConsistency();
@@ -401,11 +403,17 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
       options.min_fragment_size=AnalyzeOptions.min_fragment;
       options.pixel_len=AnalyzeOptions.pixel_len;
       options.write_clusterlabel=AnalyzeOptions.write_mode;
+      options.forest_cover_threshold=AnalyzeOptions.forest_cover_threshold;
       options.verbose=true;
+      options.flush_clusters=AnalyzeOptions.flush_clusters;
+
       if (options.write_clusterlabel>0) {
-            Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
-            Utils::ReplaceExt(str_ifile,options.str_clusterfile2,".bin",true);
-            Utils::ReplaceExt(str_ifile,options.str_labelfile,".lab",true);
+        Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
+        Utils::ReplaceExt(str_ifile,options.str_clusterfile2,".bin",true);
+        Utils::ReplaceExt(str_ifile,options.str_labelfile,".lab",true);
+      }
+      if (options.flush_clusters) {
+        Utils::ReplaceExt(str_ifile,options.str_clusterflushfile,".clusters",true);
       }
       ClusterBRI myCluster(options);
       myCluster.ClusterAnalyzation();
@@ -437,7 +445,7 @@ void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int
     if (myIMG!=nullptr) {
       myIMG->PrintInfo();
 
-      if (cmode==2) {
+      if (cmode==ComandLine::CONVERT) {
         if (myIMG->GetType()==IMG::TYPEASC) { // save geo-referencing
           myASC.SetExtend(myExtend);
           std::string str_efile;
@@ -627,7 +635,34 @@ void TestBitIO()
     cout << endl;
 }
 
-
+const std::string LISA_USAGE={
+"lisa [-/--options]\n\n"
+"-a,--analyze  analyze connected components of a raster file (#-area cells)\n"
+"-c,--convert  convert raster file into [bri] file (g=globcover)\n"
+"-d,--dept     edge effect dept of d [m], default: 100\n"
+"-e,--extend   top,left,right,bottom\n"
+"-f,--fragment statistics using minimum fragment size in [ha] (default: 0)\n"
+"-m,--map      produce a density map, out of bin/lab file\n"
+"-p,--pixel    minimum pixel length for edge detection, default: 1\n"
+"-s,--save     save results to .csv file, 1=small, 2=large\n"
+"-t,--test     test consistence of lisa\n"
+"-v,--verbose  verbosity level [0-2] (default: 1)\n"
+"-w,--write    write clusterlabel data, 1=labels+closs, 2=closs\n"
+"--info        info about raster file\n"
+"--input       inputfile\n"
+"--output      outputfile\n"
+"--version     print version info\n"
+"--threshold   forest cover threshold for forest/nonforest map\n"
+"--flush       flush clusters to use fixed amount of memory\n"
+"--agb-file    saatchi agb biomass file [t/ha]\n"
+"--check       check consistency of component analysis\n"
+"--bthres      biomass threshold [t/ha] (default: 0 t/ha)\n"
+"--rloss       relative carbon loss in edge areas, default: 0.5\n"
+"--force       force overwrite of files\n"
+"-r[#]   reduction factor for use with --map option, default: 500\n"
+"-b[#]   mean biomass for use with --analyze\n"
+"supported raster file formats: asc, pgm, tiff, bri\n"
+};
 
 int main(int argc,char *argv[])
 {
@@ -661,9 +696,11 @@ int main(int argc,char *argv[])
     AnalyzeOptions.save_mode=0;
     AnalyzeOptions.write_mode=0;
     AnalyzeOptions.check_consistency=false;
+    AnalyzeOptions.flush_clusters=false;
+    AnalyzeOptions.forest_cover_threshold=0;
 
     int verbosity_level=1;
-    int cmode=0;
+    ComandLine::METHOD cmode=ComandLine::ANALYZE;
 
     bool globcover=false;
     int reduction_factor=500;
@@ -672,34 +709,11 @@ int main(int argc,char *argv[])
     std::string str_bfile;
     geoExtend myGeoExtend;
 
-    if (argc < 2)
-    {
-       cout << "lisa [-/--options]" << endl << endl;
-       cout << "-a,--analyze  analyze connected components of a raster file (#-area cells)" << endl;
-       cout << "-c,--convert  convert raster file into [bri] file (g=globcover)" << endl;
-       cout << "-d,--dept     edge effect dept of d [m], default: 100" << endl;
-       cout << "-e,--extend   top,left,right,bottom" << endl;
-       cout << "-f,--fragment statistics using minimum fragment size in [ha] (default: 0)" << endl;
-       cout << "-m,--map      produce a density map, out of bin/lab file" << endl;
-       cout << "-p,--pixel    minimum pixel length for edge detection, default: 1" << endl;
-       cout << "-s,--save     save results to .csv file, 1=small, 2=large" << endl;
-       cout << "-t,--test     test consistence of lisa" << endl;
-       cout << "-v,--verbose  verbosity level [0-2] (default: 1)" << endl;
-       cout << "-w,--write    write clusterlabel data, 1=labels+closs, 2=closs" << endl;
-       cout << "--info        info about raster file" << endl;
-       cout << "--input       inputfile" << endl;
-       cout << "--output      outputfile" << endl;
-       cout << "--version     print version info" << endl;
-       cout << "--agb-file    saatchi agb biomass file [t/ha]" << endl;
-       cout << "--check       check consistency of component analysis" << endl;
-       cout << "--bthres      biomass threshold [t/ha] (default: 0 t/ha)"<<endl;
-       cout << "--rloss       relative carbon loss in edge areas, default: 0.5" << endl;
-       cout << "--force       force overwrite of files"<<endl;
-       cout << "-r[#]   reduction factor for use with --map option, default: 500"<<endl;
-       cout << "-b[#]   mean biomass for use with --analyze"<<endl;
-       cout << endl << "supported raster file formats: asc, pgm, tiff, bri" << endl;
-       return 1;
-    } else {
+    if (argc < 2) {
+      cout << LISA_USAGE << endl;
+      return 1;
+    }
+
     CmdOptions myCmdOpt(argc,argv);
 
     if (myCmdOpt.SearchOption("-e","--extend")) {
@@ -713,15 +727,17 @@ int main(int argc,char *argv[])
         myGeoExtend.bottom=vextend[3];
       }
     }
-    if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=0;myCmdOpt.getopt(AnalyzeOptions.ncells);};
-    if (myCmdOpt.SearchOption("","--info")) cmode=1;
-    if (myCmdOpt.SearchOption("-c","--convert")) cmode=2;
-    if (myCmdOpt.SearchOption("-t","--test")) cmode=3;
-    if (myCmdOpt.SearchOption("-m","--map")) cmode=4;
-    if (myCmdOpt.SearchOption("","--version")) cmode=5;
+    if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=ComandLine::ANALYZE;myCmdOpt.getopt(AnalyzeOptions.ncells);};
+    if (myCmdOpt.SearchOption("","--info")) cmode=ComandLine::INFO;
+    if (myCmdOpt.SearchOption("-c","--convert")) cmode=ComandLine::CONVERT;
+    if (myCmdOpt.SearchOption("-t","--test")) cmode=ComandLine::TEST;
+    if (myCmdOpt.SearchOption("-m","--map")) cmode=ComandLine::MAP;
+    if (myCmdOpt.SearchOption("","--version")) cmode=ComandLine::VERSION;
     if (myCmdOpt.SearchOption("","--force")) force_overwrite=true;
     if (myCmdOpt.SearchOption("-v","--verbose")) myCmdOpt.getopt(verbosity_level);
     if (myCmdOpt.SearchOption("-d","--dept")) {myCmdOpt.getopt(AnalyzeOptions.edge_dept);};
+    if (myCmdOpt.SearchOption("","--threshold")) {myCmdOpt.getopt(AnalyzeOptions.forest_cover_threshold);};
+    if (myCmdOpt.SearchOption("","--flush")) {AnalyzeOptions.flush_clusters=true;};
     if (myCmdOpt.SearchOption("-f","--fragment")) {myCmdOpt.getopt(AnalyzeOptions.min_fragment);};
     if (myCmdOpt.SearchOption("-w","--write")) myCmdOpt.getopt(AnalyzeOptions.write_mode);
     if (myCmdOpt.SearchOption("-s","--save")) myCmdOpt.getopt(AnalyzeOptions.save_mode);
@@ -752,22 +768,20 @@ int main(int argc,char *argv[])
        cout << "agb-file:      '" << str_bfile << "'" << endl;
     }
 
-    }
-
     ComandLine myCmdLine;
-    if (cmode==0)
+    if (cmode==ComandLine::ANALYZE)
     {
       myCmdLine.Analyze(str_ifile,str_bfile,AnalyzeOptions);
-    } else if (cmode==1 || cmode==2)
+    } else if (ComandLine::CONVERT || cmode==ComandLine::INFO)
     {
       myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);
-    } else if (cmode==3)
+    } else if (cmode==ComandLine::TEST)
     {
       myCmdLine.TestConsistency();
-    } else if (cmode==4)
+    } else if (cmode==ComandLine::MAP)
     {
       myCmdLine.Reduce(str_ifile,reduction_factor,myGeoExtend);
-    } else if (cmode==5) {
+    } else if (cmode==ComandLine::VERSION) {
       PrintVersion(1);
     }
 

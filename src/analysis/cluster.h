@@ -24,15 +24,15 @@ class BRIOptions
     edge_dept=100.0;
     min_fragment_size=0.0;
     relative_carbon_loss=0.5;
-    verbose=false;
+    verbose=flush_clusters=false;
   };
   IMG &myIMG;
   Projection &Proj;
   BM &BMass;
-  int pixel_len,write_clusterlabel;
+  int pixel_len,write_clusterlabel,forest_cover_threshold;
   double edge_dept,relative_carbon_loss,min_fragment_size;
-  bool verbose;
-  std::string str_labelfile,str_clusterfile1,str_clusterfile2;
+  bool verbose,flush_clusters;
+  std::string str_labelfile,str_clusterfile1,str_clusterfile2,str_clusterflushfile;
 };
 
 class ClusterBRI
@@ -46,7 +46,11 @@ class ClusterBRI
     void CheckClusters();
     cluster_stats &GetClusterStats(){return myStats;};
   protected:
+    void FlushClusters(int cur_row);
+    void AddClusterStats(int64_t parea,double area,double border,double biomass);
+    int UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len);
     cluster_stats myStats;
+    void CompressTree(int cur_row);
     double CalculateCLossPerHA(int64_t label);
     double CalculateCLoss(double biomass,double area_m2,double edge_area);
     void WriteLabelFile();
@@ -73,11 +77,12 @@ class ClusterBRI
     int64_t **wrows; // prev, cur, next
     std::vector <int64_t> cdata;
     std::vector <tcelldata> clusterdata;
-    int64_t max_cluster_label,num_1pixel;
+    int64_t max_cluster_label,total_roots_written,num_1pixel;
     int row;
     int64_t max_border_pixel;
     int lookahead_rows,bufrows,endrow;
     FILE *clusterfile1;
+    fstream ofs_clusterfile;
     int64_t *labelrow,*rowtmp,minlabel;
     uint8_t *clusterrowdata;
 };
