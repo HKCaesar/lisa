@@ -4,7 +4,7 @@ ClusterBRI::ClusterBRI(BRIOptions &Options)
 :opt(Options),bri_width(opt.myIMG.GetWidth())
 {
   //rowbuffer=new uint8_t[bri_width];
-  lookahead_rows=Options.pixel_len;
+  lookahead_rows=Options.analyze_opt.pixel_len;
   bufrows=(2*lookahead_rows)+1;
   wrows=new int64_t*[bufrows];
   for (int i=0;i<bufrows;i++) wrows[i]=new int64_t[bri_width];
@@ -49,11 +49,11 @@ int64_t ClusterBRI::GetNumRoots()
 double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len)
 {
   double edge_area=0.;
-  if (edge_len*opt.edge_dept>4.*area) edge_area=area;
+  if (edge_len*opt.analyze_opt.edge_dept>4.*area) edge_area=area;
   else  // calculate size-index from didham & ewers core area model
   {
     const double si=edge_len/(2.*sqrt(M_PI*area));
-    edge_area=opt.edge_dept*(edge_len - (si*si)*M_PI*opt.edge_dept);
+    edge_area=opt.analyze_opt.edge_dept*(edge_len - (si*si)*M_PI*opt.analyze_opt.edge_dept);
   }
   return edge_area;
 }
@@ -61,9 +61,9 @@ double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len)
 double ClusterBRI::CalculateEdgeAreaCircle(double area)
 {
   double r=sqrt(area/M_PI);
-  if (r < opt.edge_dept) return area;
+  if (r < opt.analyze_opt.edge_dept) return area;
   else {
-    double edge_area=area-((r-opt.edge_dept)*(r-opt.edge_dept)*M_PI);
+    double edge_area=area-((r-opt.analyze_opt.edge_dept)*(r-opt.analyze_opt.edge_dept)*M_PI);
     return edge_area;
   }
 }
@@ -75,27 +75,27 @@ double ClusterBRI::CalculateCLoss(double biomass,double area_m2,double edge_area
 {
   double biomass_ha=(biomass*10000.)/area_m2; // [t/ha]
   double carbon_ha=0.5*biomass_ha;
-  double c_loss=(opt.relative_carbon_loss*edge_area/10000.*carbon_ha)/1000000000.; //[Gt]
+  double c_loss=(opt.analyze_opt.relative_carbon_loss*edge_area/10000.*carbon_ha)/1000000000.; //[Gt]
   return c_loss;
 }
 
-void ClusterBRI::AddClusterStats(int64_t parea,double carea,double cborder,double cbiomass)
+void ClusterBRI::AddClusterStats(int64_t parea,const tcelldata &cell)
 {
-   double areaha=carea/10000.;
-   if (areaha>=opt.min_fragment_size) {
+   double areaha=cell.area/10000.;
+   if (areaha>=opt.analyze_opt.min_fragment_size) {
       if (areaha < 10.) myStats.num_clusters10ha++;
       if (areaha < 50.) myStats.num_clusters50ha++;
       myStats.cell_area+=parea;
-      myStats.total_area+=carea;
-      myStats.total_border_len+=cborder;
-      double edge_area_de=CalculateEdgeAreaDE(carea,cborder);
+      myStats.total_area+=cell.area;
+      myStats.total_border_len+=cell.border;
+      double edge_area_de=CalculateEdgeAreaDE(cell.area,cell.border);
       myStats.total_edge_area_de+=edge_area_de;
-      myStats.total_edge_area_circle+=CalculateEdgeAreaCircle(carea);
+      myStats.total_edge_area_circle+=CalculateEdgeAreaCircle(cell.area);
 
-      myStats.total_biomass+=(cbiomass/1000000000.); //Gt
+      myStats.total_biomass+=(cell.biomass/1000000000.); //Gt
 
-      myStats.total_closs+=CalculateCLoss(cbiomass,carea,edge_area_de);
-      if (carea>myStats.max_area) myStats.max_area=carea;
+      myStats.total_closs+=CalculateCLoss(cell.biomass,cell.area,edge_area_de);
+      if (cell.area>myStats.max_area) myStats.max_area=cell.area;
       myStats.num_clusters++;
     }
 }
@@ -103,7 +103,7 @@ void ClusterBRI::AddClusterStats(int64_t parea,double carea,double cborder,doubl
 void ClusterBRI::CalculateStats()
 {
   myStats.Reset(); // in case CalculateStats is called a second time
-  if (opt.flush_clusters) { // read clusters from file
+  if (opt.analyze_opt.flush_clusters) { // read clusters from file
     ofs_clusterfile.open(opt.str_clusterflushfile,ios::binary|ios::in);
     if (!ofs_clusterfile.is_open()) {
       cout << "warning: could not open: '" << opt.str_clusterflushfile << "'\n";
@@ -113,16 +113,17 @@ void ClusterBRI::CalculateStats()
     for (int64_t i=0;i<total_roots_written;i++)
     {
        ofs_clusterfile.read((char*)buffer,8*4);
+       tcelldata cell;
        int64_t parea=Utils::Get64LH(buffer);
-       double  carea=Utils::GetDouble(buffer+8);
-       double  cborder=Utils::GetDouble(buffer+16);
-       double  cbiomass=Utils::GetDouble(buffer+24);
-       AddClusterStats(parea,carea,cborder,cbiomass);
+       cell.area=Utils::GetDouble(buffer+8);
+       cell.border=Utils::GetDouble(buffer+16);
+       cell.biomass=Utils::GetDouble(buffer+24);
+       AddClusterStats(parea,cell);
     }
     ofs_clusterfile.close();
   } else {
     for (int64_t i=1;i<=max_cluster_label;i++) {
-      if (cdata[i]<0) AddClusterStats(-cdata[i],clusterdata[i].area,clusterdata[i].border,clusterdata[i].biomass);
+      if (cdata[i]<0) AddClusterStats(-cdata[i],clusterdata[i]);
     }
   }
   if (myStats.num_clusters)  myStats.mean_area=myStats.total_area/((double)myStats.num_clusters*10000.);
@@ -142,18 +143,20 @@ double ClusterBRI::CalculateBorder(inter_cell &icell,bool left,bool right,bool t
 void ClusterBRI::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,bool &btop,bool &bbottom)
 {
   int j;
+  const int pixel_len=opt.analyze_opt.pixel_len;
+
   bleft=btop=bright=bbottom=true;
-  if (i>=opt.pixel_len) {
-    for (j=1;j<=opt.pixel_len;j++) {if (wrows[cur_row][i-j]!=0) {bleft=false;break;}};
+  if (i>=pixel_len) {
+    for (j=1;j<=pixel_len;j++) {if (wrows[cur_row][i-j]!=0) {bleft=false;break;}};
   }
-  if (i<bri_width-opt.pixel_len) {
-    for (j=1;j<=opt.pixel_len;j++) {if (wrows[cur_row][i+j]!=0) {bright=false;break;}};
+  if (i<bri_width-pixel_len) {
+    for (j=1;j<=pixel_len;j++) {if (wrows[cur_row][i+j]!=0) {bright=false;break;}};
   }
-  if (row>=opt.pixel_len) {
-    for (j=1;j<=opt.pixel_len;j++) {if (wrows[Utils::SMod(cur_row-j,bufrows)][i]!=0) {btop=false;break;}};
+  if (row>=pixel_len) {
+    for (j=1;j<=pixel_len;j++) {if (wrows[Utils::SMod(cur_row-j,bufrows)][i]!=0) {btop=false;break;}};
   }
-  if (row<endrow-opt.pixel_len) {
-    for (j=1;j<=opt.pixel_len;j++) {if (wrows[Utils::SMod(cur_row+j,bufrows)][i]!=0) {bbottom=false;break;}};
+  if (row<endrow-pixel_len) {
+    for (j=1;j<=pixel_len;j++) {if (wrows[Utils::SMod(cur_row+j,bufrows)][i]!=0) {bbottom=false;break;}};
   }
 }
 
@@ -232,7 +235,7 @@ void ClusterBRI::ProcessRow(int row,int cur_row)
       }
     }
   }
-  if (opt.write_clusterlabel==1)WriteMarkedRow(currow,bri_width,clusterfile1);
+  if (opt.analyze_opt.write_mode==1)WriteMarkedRow(currow,bri_width,clusterfile1);
 }
 
 void ClusterBRI::PrintHist(std::vector <int64_t> &hist,std::string header)
@@ -274,6 +277,28 @@ void ClusterBRI::WriteHist(ofstream &file,std::vector <double> &hist,std::string
   file<<"\n";
 }
 
+void ClusterBRI::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss)
+{
+    if (cell.area/10000.>opt.analyze_opt.min_fragment_size) {
+        int dclass=floor(log10(cell.area/10000.));
+        if (dclass<0) dclass=0;
+        else if (dclass<9) dclass++;
+        if (dclass>=0 && dclass<=9)
+        {
+          hist_area[dclass]++;
+          hist_totalarea[dclass]+=Utils::SqMetre_To_MillHa(cell.area);
+
+          double edge_area_de=CalculateEdgeAreaDE(cell.area,cell.border);
+
+          hist_totaledge[dclass]+=Utils::SqMetre_To_MillHa(edge_area_de);
+
+          hist_biomass[dclass]+=cell.biomass/1000000000.;
+          hist_totalloss[dclass]+=CalculateCLoss(cell.biomass,cell.area,edge_area_de);
+
+        } else cout << "warning: too large fragment detected: " << cell.area/10000. << " ha" << endl;
+    }
+}
+
 void ClusterBRI::SaveSmallClusterData(std::string &fname)
 {
   // calculate histograms
@@ -282,26 +307,32 @@ void ClusterBRI::SaveSmallClusterData(std::string &fname)
   std::vector <double>hist_totaledge(10);
   std::vector <double>hist_biomass(10);
   std::vector <double>hist_totalloss(10);
-  for (int64_t i=1;i<=max_cluster_label;i++)
-    if (cdata[i]<0 && clusterdata[i].area/10000.>opt.min_fragment_size) {
-        const double area_m2=clusterdata[i].area;
-        int dclass=floor(log10(area_m2/10000.));
-        if (dclass<0) dclass=0;
-        else if (dclass<9) dclass++;
-        if (dclass>=0 && dclass<=9)
-        {
-          hist_area[dclass]++;
-          hist_totalarea[dclass]+=Utils::SqMetre_To_MillHa(area_m2);
 
-          double edge_area_de=CalculateEdgeAreaDE(area_m2,clusterdata[i].border);
-
-          hist_totaledge[dclass]+=Utils::SqMetre_To_MillHa(edge_area_de);
-
-          double biomass=(clusterdata[i].biomass);
-          hist_biomass[dclass]+=biomass/1000000000.;
-          hist_totalloss[dclass]+=CalculateCLoss(clusterdata[i].biomass,clusterdata[i].area,edge_area_de);
-        } else cout << "warning: too large fragment detected: " << area_m2/10000. << " ha" << endl;
+  if (opt.analyze_opt.flush_clusters) { // read clusters from file
+    ofs_clusterfile.open(opt.str_clusterflushfile,ios::binary|ios::in);
+    if (!ofs_clusterfile.is_open()) {
+      cout << "warning: could not open: '" << opt.str_clusterflushfile << "'\n";
+      return;
     }
+    uint8_t buffer[8*4];
+    for (int64_t i=0;i<total_roots_written;i++)
+    {
+       ofs_clusterfile.read((char*)buffer,8*4);
+       tcelldata cell;
+       int64_t parea=Utils::Get64LH(buffer);
+       cell.area=Utils::GetDouble(buffer+8);
+       cell.border=Utils::GetDouble(buffer+16);
+       cell.biomass=Utils::GetDouble(buffer+24);
+       AddClusterSmallStats(cell,hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss);
+    }
+    ofs_clusterfile.close();
+  } else {
+    for (int64_t i=1;i<=max_cluster_label;i++)
+      if (cdata[i]<0) {
+        AddClusterSmallStats(clusterdata[i],hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss);
+      }
+  }
+
   PrintHist(hist_area,"fragment distribution");
   PrintHist(hist_totalarea,"area distribution"," 10^6 ha");
   PrintHist(hist_totaledge,"edge area distribution"," 10^6 ha");
@@ -331,7 +362,7 @@ void ClusterBRI::SaveFullClusterData(std::string &fname)
   {
     for (size_t i=0;i<cdata.size();i++)
     {
-       if (cdata[i]<0 && clusterdata[i].area/10000.>opt.min_fragment_size)
+       if (cdata[i]<0 && clusterdata[i].area/10000.>opt.analyze_opt.min_fragment_size)
        {
           snprintf(stmp,256,"%jd,%0.2f,%0.2f\n",(intmax_t)-cdata[i],clusterdata[i].area,clusterdata[i].border);
           myfile << stmp;
@@ -358,7 +389,7 @@ double ClusterBRI::CalculateCLossPerHA(int64_t label)
   double area_m2=clusterdata[label].area;
   double edge_area_de=CalculateEdgeAreaDE(area_m2,clusterdata[label].border);
   if (edge_area_de < 0) cout << "warning: edge_area < 0\n";
-  double c_loss=(0.5*opt.relative_carbon_loss*edge_area_de*clusterdata[label].biomass*10000.)/(area_m2*area_m2);
+  double c_loss=(0.5*opt.analyze_opt.relative_carbon_loss*edge_area_de*clusterdata[label].biomass*10000.)/(area_m2*area_m2);
   return c_loss;
 }
 
@@ -416,7 +447,7 @@ void ClusterBRI::WriteClusterfile()
          WriteMarkedRow(labelrow,bri_width,clusterfile2);
        }
     }
-    if (opt.verbose && (row+1)%100==0) PrintProgress(row+1,endrow);
+    if (opt.analyze_opt.verbose && (row+1)%100==0) PrintProgress(row+1,endrow);
   }
   cout << "total cells:   " << total_cells << endl;
   cout << "total biomass: " << total_biomass/1000000000.0 << endl;
@@ -446,8 +477,8 @@ int ClusterBRI::UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len)
 {
   for (int i=0;i<len;i++) {
     uint8_t val=srcrow[i];
-    if (opt.forest_cover_threshold>0) {
-      if (val>opt.forest_cover_threshold) val=1;
+    if (opt.analyze_opt.forest_cover_threshold>0) {
+      if (val>opt.analyze_opt.forest_cover_threshold) val=1;
       else val=0;
     }
     if (val!=0 && val!=1) {Utils::PrintWarning("invalid input value: "+std::to_string(val));return 1;}
@@ -541,9 +572,16 @@ void ClusterBRI::FlushClusters(int cur_row)
   clusterdata=clusterdata_new;
 }
 
+void ClusterBRI::DeleteTempFiles()
+{
+ if (opt.analyze_opt.flush_clusters && std::remove(opt.str_clusterflushfile.c_str())!=0)  {
+    cout << "warning: could not delete '"  << opt.str_clusterflushfile << "'\n";
+ }
+}
+
 void ClusterBRI::ClusterAnalyzation()
 {
-  if (opt.write_clusterlabel==1) {
+  if (opt.analyze_opt.write_mode==1) {
     cout << "writing pass1-clusterfile: '" << opt.str_clusterfile1 << "'" << endl;
     clusterfile1=Utils::OpenWriteFILE(opt.str_clusterfile1);
     if (clusterfile1==NULL) {
@@ -554,7 +592,7 @@ void ClusterBRI::ClusterAnalyzation()
     rowtmp=new int64_t[bri_width];
     clusterrowdata=new uint8_t[bri_width*8];
   }
-  if (opt.flush_clusters) {
+  if (opt.analyze_opt.flush_clusters) {
     ofs_clusterfile.open(opt.str_clusterflushfile,ios::binary|ios::out);
     if (!ofs_clusterfile.is_open()) {
        cout << "warning: could not create '" << opt.str_clusterflushfile << "'\n";
@@ -565,8 +603,8 @@ void ClusterBRI::ClusterAnalyzation()
   cdata.resize(0);
   clusterdata.resize(0);
   opt.myIMG.StartReader();
-  endrow=opt.myIMG.GetHeight();
-  //endrow=20000;
+  if (opt.analyze_opt.nrows>0) endrow=opt.analyze_opt.nrows;
+  else endrow=opt.myIMG.GetHeight();
 
   max_cluster_label=0;
   total_roots_written=0;
@@ -592,23 +630,23 @@ void ClusterBRI::ClusterAnalyzation()
       ProcessRow(row,cur_ptr);
 
       //if (row%10000==0) CompressTree(cur_ptr);
-      if (opt.flush_clusters && (row+1)%100==0) FlushClusters(cur_ptr);
+      if (opt.analyze_opt.flush_clusters && (row+1)%100==0) FlushClusters(cur_ptr);
 
       cur_ptr=(cur_ptr+1)%bufrows;
       row_ptr=(row_ptr+1)%bufrows;
 
-      if (opt.verbose && (row+1)%100==0) PrintProgress(row+1,endrow);
+      if (opt.analyze_opt.verbose && (row+1)%100==0) PrintProgress(row+1,endrow);
   }
-  if (opt.flush_clusters) {
+  if (opt.analyze_opt.flush_clusters) {
      FlushClusters(-1);
      ofs_clusterfile.close();
      cout << "flush_clusters: " << total_roots_written << " roots written\n";
   }
 
-  if (opt.verbose) {PrintProgress(endrow,endrow);cout << endl;};
+  if (opt.analyze_opt.verbose) {PrintProgress(endrow,endrow);cout << endl;};
   opt.myIMG.StopReader();
 
-  if (opt.write_clusterlabel==1) {
+  if (opt.analyze_opt.write_mode==1) {
     fclose(clusterfile1);
     WriteClusterfile();
     WriteLabelFile();
@@ -616,21 +654,18 @@ void ClusterBRI::ClusterAnalyzation()
     delete []labelrow;
     delete []clusterrowdata;
     delete []rowtmp;
-  } else if (opt.write_clusterlabel==2) {
+  } else if (opt.analyze_opt.write_mode==2) {
     WriteLabelFile();
   }
 
   CalculateStats();
-  if (std::remove(opt.str_clusterflushfile.c_str())!=0)  {
-     cout << "warning: could not delete '"  << opt.str_clusterflushfile << "'\n";
-  }
 
-  if (opt.verbose) {
+  if (opt.analyze_opt.verbose) {
   cout << "cdata size: " << ((cdata.size()*sizeof(int64_t))>>20) << " MiB";
   cout << ", clusterdata size: " << ((clusterdata.size()*sizeof(tcelldata))>>20) << " MiB" << endl;
   cout << endl;
 
-  cout << "number of clusters:  " << myStats.num_clusters << " (min size: " << opt.min_fragment_size << " ha, forest cover: " << opt.forest_cover_threshold << "%)" << endl;
+  cout << "number of clusters:  " << myStats.num_clusters << " (min size: " << opt.analyze_opt.min_fragment_size << " ha, forest cover: " << opt.analyze_opt.forest_cover_threshold << "%)" << endl;
   if (myStats.num_clusters) {
   double r1=(double)myStats.num_clusters10ha/(double)myStats.num_clusters*100.0;
   double r2=(double)myStats.num_clusters50ha/(double)myStats.num_clusters*100.0;
@@ -640,9 +675,9 @@ void ClusterBRI::ClusterAnalyzation()
   cout << "total area:          " << myStats.cell_area << " pixels = " << std::fixed << std::setprecision(2) << Utils::SqMetre_To_MillHa(myStats.total_area) << " 10^6 ha" << endl;
   cout << "mean area:           " << std::fixed << std::setprecision(4) << myStats.mean_area << " ha" << endl;
   cout << "max area:            " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.max_area) << " 10^6 ha" << endl;
-  cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (pixel-len: " << opt.pixel_len << ")" << endl;
+  cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (pixel-len: " << opt.analyze_opt.pixel_len << ")" << endl;
   //cout << "max edge len:        " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm((double)max_border_pixel*sqrt(opt.Proj.GetMeanPixelArea())) << " 10^6 km" << endl;
-  cout << "edge area (DE):      " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_de) << " 10^6 ha" << ", edge effect dept: " << std::fixed << std::setprecision(1) << opt.edge_dept << " m" << endl;
+  cout << "edge area (DE):      " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_de) << " 10^6 ha" << ", edge effect dept: " << std::fixed << std::setprecision(1) << opt.analyze_opt.edge_dept << " m" << endl;
   if (myStats.total_area)
   cout << "edge area/area:      " << std::fixed << std::setprecision(2) << (myStats.total_edge_area_de/myStats.total_area*100) << " %" << endl;
   cout << "edge area (Circle):  " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_circle) << " 10^6 ha" << endl;
@@ -652,6 +687,6 @@ void ClusterBRI::ClusterAnalyzation()
   cout << "total biomass:       " << std::fixed << std::setprecision(2) << myStats.total_biomass << " Gt" << endl;
   cout << "mean biomass:        " << std::fixed << std::setprecision(2) << (myStats.total_biomass*1000)/(Utils::SqMetre_To_MillHa(myStats.total_area)) << " t/ha" << endl;
   cout << "total C-stock:       " << std::fixed << std::setprecision(2) << (0.5*myStats.total_biomass) << " Gt" << endl;
-  cout << "total C-loss:        " << std::fixed << std::setprecision(2) << myStats.total_closs<< " Gt (rel. loss e=" <<opt.relative_carbon_loss<<")"<< endl;
+  cout << "total C-loss:        " << std::fixed << std::setprecision(2) << myStats.total_closs<< " Gt (rel. loss e=" <<opt.analyze_opt.relative_carbon_loss<<")"<< endl;
   }
 }

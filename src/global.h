@@ -20,7 +20,7 @@ using namespace std;
 // enable to compile against libtiff
 #define TIFF_SUPPORT
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.98.1 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.98.2 (c) 2014-2016 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -437,6 +437,41 @@ static std::string SecToTime(double time)
     {
       return (val - (int)val > 0.0);
     }
+static int StringToInt(std::string &s)
+{
+  int val=0;
+  try
+  {
+    val=std::stoi(s);
+  }
+  catch(std::invalid_argument&) //or catch(...) to catch all exceptions
+  {
+    std::cout << "invalid argument: '" << s << "'" << std::endl;
+  }
+  return val;
+}
+
+static double StringToDouble(std::string &s)
+{
+  double val=0;
+  try
+  {
+    val=std::stod(s);
+  }
+  catch(std::invalid_argument&) //or catch(...) to catch all exceptions
+  {
+    std::cout << "invalid argument: '" << s << "'" << std::endl;
+  }
+  return val;
+}
+
+static bool isDouble( string myString ) {
+    std::istringstream iss(myString);
+    double f;
+    iss >> noskipws >> f; // noskipws considers leading whitespace invalid
+    // Check the entire string was consumed and if either failbit or badbit is set
+    return iss.eof() && !iss.fail();
+}
 };
 
 class Frame {

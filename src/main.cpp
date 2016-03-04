@@ -11,6 +11,7 @@
 #include "model/rangecoder.h"
 #include "model/counter.h"
 #include "model/vle.h"
+#include "cmdoptions.h"
 
 void TestCM(std::string fname)
 {
@@ -96,7 +97,8 @@ int TestConsistence(int dimx,int dimy,double p,int verbose=0)
       Projection myProj(myBRI.GetWidth(),myBRI.GetHeight());
       myProj.SetDummyInterpolation(30); // set a dummy interpolation of 30m
 
-      BRIOptions options(myBRI,myProj,myBiomass);
+      AnalyzeOptions analyze_opt;
+      BRIOptions options(myBRI,myProj,myBiomass,analyze_opt);
 
       ClusterBRI myCluster(options); // edge effect dept 100m
       myCluster.ClusterAnalyzation();
@@ -125,41 +127,6 @@ int TestConsistence(int dimx,int dimy,double p,int verbose=0)
   return 0;
 }
 
-int StringToInt(std::string &s)
-{
-  int val=0;
-  try
-  {
-    val=std::stoi(s);
-  }
-  catch(std::invalid_argument&) //or catch(...) to catch all exceptions
-  {
-    std::cout << "invalid argument: '" << s << "'" << std::endl;
-  }
-  return val;
-}
-
-double StringToDouble(std::string &s)
-{
-  double val=0;
-  try
-  {
-    val=std::stod(s);
-  }
-  catch(std::invalid_argument&) //or catch(...) to catch all exceptions
-  {
-    std::cout << "invalid argument: '" << s << "'" << std::endl;
-  }
-  return val;
-}
-
-bool isDouble( string myString ) {
-    std::istringstream iss(myString);
-    double f;
-    iss >> noskipws >> f; // noskipws considers leading whitespace invalid
-    // Check the entire string was consumed and if either failbit or badbit is set
-    return iss.eof() && !iss.fail();
-}
 
 void SplitPath(const std::string &str,std::string &path,std::string &fname)
 {
@@ -213,90 +180,7 @@ void PrintVersion(int mode=0)
   #endif
 }
 
-class CmdOptions {
-  public:
-    CmdOptions(int argc,char *argv[]):argc(argc),argv(argv) {};
-    bool SearchOption(const std::string &sshort,const std::string &&sslong); // check if option exists
-    void getopt(std::string &val);
-    void getopt(int &val);
-    void getopt(double &val);
-    void getopt(std::vector <double>&dtokens);
-private:
-    int argc;
-    char **argv;
-    bool optfound;
-    std::string optvalue;
-};
 
-void CmdOptions::getopt(std::string &val)
-{
-  if (optfound && optvalue.length()) {
-    val=optvalue;
-  };
-}
-
-void CmdOptions::getopt(int &val)
-{
-  if (optfound && optvalue.length()) {
-     try {
-       val=std::stoi(optvalue);
-     } catch (std::invalid_argument&) {
-     }
-  };
-}
-
-void CmdOptions::getopt(double &val)
-{
-  if (optfound && optvalue.length()) {
-     try {
-       val=std::stod(optvalue);
-     } catch (std::invalid_argument&) {
-     }
-  };
-}
-
-void CmdOptions::getopt(std::vector <double>&dtokens)
-{
-  std::vector <std::string> stokens;
-  StringUtils::Tokenize(optvalue,stokens,",");
-  for (size_t i=0;i<stokens.size();i++) {
-      double val=std::stod(stokens[i]);
-      dtokens.push_back(val);
-  }
-}
-
-bool CmdOptions::SearchOption(const std::string &sshort,const std::string &&sslong)
-{
-  std::string usshort=StringUtils::toupper(sshort);
-  std::string usslong=StringUtils::toupper(sslong);
-  optvalue="";
-  optfound=false;
-  int i=1;
-  while (i<argc) {
-    std::string sarg=StringUtils::toupper(std::string(argv[i]));
-    std::string arglong(sarg);
-    std::string argshort(sarg.substr(0,2));
-
-    if (usshort.length() && argshort.compare(usshort)==0) {
-      if (sarg.length()>2) optvalue=sarg.substr(2);
-      optfound=true;
-      return optfound;
-    } else if (usslong.length() && arglong.compare(usslong)==0) {
-      if (i<argc-1) optvalue=std::string(argv[i+1]);
-      optfound=true;
-      return optfound;
-    }
-    i++;
-  }
-  return optfound;
-}
-
-struct tAnalyzeOptions {
-  double mean_biomass,bthres,rloss;
-  int ncells,edge_dept,min_fragment,pixel_len,write_mode,save_mode;
-  int forest_cover_threshold;
-  bool check_consistency,flush_clusters;
-};
 
 class ComandLine {
   struct tlabel {
@@ -305,7 +189,7 @@ class ComandLine {
   };
   public:
     enum METHOD {NONE,ANALYZE,CONVERT,INFO,MAP,TEST,VERSION};
-    void Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions);
+    void Analyze(const std::string &str_ifile,const std::string &str_bfile,AnalyzeOptions &AnalyzeOptions);
     void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
     void TestConsistency();
     void Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
@@ -352,7 +236,7 @@ int ComandLine::OpenInputRaster(const std::string str_ifile)
 }
 
 // connected component analysis of a supported raster file
-void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,const tAnalyzeOptions &AnalyzeOptions)
+void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,AnalyzeOptions &AnalyzeOptions)
 {
   if (OpenInputRaster(str_ifile)==0) {
     if (myIMG!=nullptr) {
@@ -396,23 +280,14 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
         myBiomass.SetGeoRef(myProj.getLeft(),myProj.getTop(),myProj.getCellsize()); // setup geo-reference for Biomass-Card
       };
 
-      BRIOptions options(*myIMG,myProj,myBiomass);
+      BRIOptions options(*myIMG,myProj,myBiomass,AnalyzeOptions);
 
-      options.edge_dept=AnalyzeOptions.edge_dept;
-      options.relative_carbon_loss=AnalyzeOptions.rloss;
-      options.min_fragment_size=AnalyzeOptions.min_fragment;
-      options.pixel_len=AnalyzeOptions.pixel_len;
-      options.write_clusterlabel=AnalyzeOptions.write_mode;
-      options.forest_cover_threshold=AnalyzeOptions.forest_cover_threshold;
-      options.verbose=true;
-      options.flush_clusters=AnalyzeOptions.flush_clusters;
-
-      if (options.write_clusterlabel>0) {
+      if (AnalyzeOptions.write_mode>0) {
         Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
         Utils::ReplaceExt(str_ifile,options.str_clusterfile2,".bin",true);
         Utils::ReplaceExt(str_ifile,options.str_labelfile,".lab",true);
       }
-      if (options.flush_clusters) {
+      if (AnalyzeOptions.flush_clusters) {
         Utils::ReplaceExt(str_ifile,options.str_clusterflushfile,".clusters",true);
       }
       ClusterBRI myCluster(options);
@@ -420,14 +295,15 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
 
       if (AnalyzeOptions.check_consistency) myCluster.CheckClusters();
 
-      std::string str_ofile;
-      Utils::ReplaceExt(str_ifile,str_ofile,".csv",true);
       if (AnalyzeOptions.save_mode>0) {
+        std::string str_ofile;
+        Utils::ReplaceExt(str_ifile,str_ofile,".csv",true);
         cout << "Saving clusters to '" << str_ofile << "'" << endl;
         if (AnalyzeOptions.save_mode==1) myCluster.SaveSmallClusterData(str_ofile);
         else if (AnalyzeOptions.save_mode==2) myCluster.SaveFullClusterData(str_ofile);
         else cout << "unknown save_mode: " << AnalyzeOptions.save_mode << endl;
       }
+      myCluster.DeleteTempFiles();
       myTimer.Stop();
       cout << endl << "time: " << Utils::SecToTime(myTimer.SecElapsed()) << endl;
 
@@ -652,6 +528,7 @@ const std::string LISA_USAGE={
 "--input       inputfile\n"
 "--output      outputfile\n"
 "--version     print version info\n"
+"--nrows       number of rows to process\n"
 "--threshold   forest cover threshold for forest/nonforest map\n"
 "--flush       flush clusters to use fixed amount of memory\n"
 "--agb-file    saatchi agb biomass file [t/ha]\n"
@@ -685,19 +562,7 @@ int main(int argc,char *argv[])
     cout << endl << bin.GetBytesProcessed() << endl;
     return 0;
     #endif
-    tAnalyzeOptions AnalyzeOptions;
-    AnalyzeOptions.bthres=0.; // biomass threshold: 0 t/ha
-    AnalyzeOptions.edge_dept=100; // edge effect dept 100m
-    AnalyzeOptions.mean_biomass=0.;
-    AnalyzeOptions.min_fragment=0; // minimum fragment size 0 ha
-    AnalyzeOptions.ncells=1; // number of interpolation cells
-    AnalyzeOptions.pixel_len=1; // pixel number for edge detection
-    AnalyzeOptions.rloss=0.5; // relative carbon loss in edge areas
-    AnalyzeOptions.save_mode=0;
-    AnalyzeOptions.write_mode=0;
-    AnalyzeOptions.check_consistency=false;
-    AnalyzeOptions.flush_clusters=false;
-    AnalyzeOptions.forest_cover_threshold=0;
+    AnalyzeOptions AnalyzeOptions;
 
     int verbosity_level=1;
     ComandLine::METHOD cmode=ComandLine::ANALYZE;
@@ -737,8 +602,9 @@ int main(int argc,char *argv[])
     if (myCmdOpt.SearchOption("-v","--verbose")) myCmdOpt.getopt(verbosity_level);
     if (myCmdOpt.SearchOption("-d","--dept")) {myCmdOpt.getopt(AnalyzeOptions.edge_dept);};
     if (myCmdOpt.SearchOption("","--threshold")) {myCmdOpt.getopt(AnalyzeOptions.forest_cover_threshold);};
+    if (myCmdOpt.SearchOption("","--nrows")) {myCmdOpt.getopt(AnalyzeOptions.nrows);};
     if (myCmdOpt.SearchOption("","--flush")) {AnalyzeOptions.flush_clusters=true;};
-    if (myCmdOpt.SearchOption("-f","--fragment")) {myCmdOpt.getopt(AnalyzeOptions.min_fragment);};
+    if (myCmdOpt.SearchOption("-f","--fragment")) {myCmdOpt.getopt(AnalyzeOptions.min_fragment_size);};
     if (myCmdOpt.SearchOption("-w","--write")) myCmdOpt.getopt(AnalyzeOptions.write_mode);
     if (myCmdOpt.SearchOption("-s","--save")) myCmdOpt.getopt(AnalyzeOptions.save_mode);
     if (myCmdOpt.SearchOption("-b","")) myCmdOpt.getopt(AnalyzeOptions.mean_biomass);
@@ -748,7 +614,7 @@ int main(int argc,char *argv[])
     if (myCmdOpt.SearchOption("-o","--output")) myCmdOpt.getopt(str_ofile);
     if (myCmdOpt.SearchOption("","--agb-file")) myCmdOpt.getopt(str_bfile);
     if (myCmdOpt.SearchOption("","--bthres")) myCmdOpt.getopt(AnalyzeOptions.bthres);
-    if (myCmdOpt.SearchOption("","--rloss")) myCmdOpt.getopt(AnalyzeOptions.rloss);
+    if (myCmdOpt.SearchOption("","--rloss")) myCmdOpt.getopt(AnalyzeOptions.relative_carbon_loss);
     if (myCmdOpt.SearchOption("","--check")) AnalyzeOptions.check_consistency=true;
 
     if (verbosity_level>1) {
@@ -756,9 +622,9 @@ int main(int argc,char *argv[])
        cout << "ncells:        " << AnalyzeOptions.ncells << endl;
        cout << "edge dept:     " << AnalyzeOptions.edge_dept << endl;
        cout << "mean biosmass: " << AnalyzeOptions.mean_biomass << endl;
-       cout << "min fragment:  " << AnalyzeOptions.min_fragment << endl;
+       cout << "min fragment:  " << AnalyzeOptions.min_fragment_size << endl;
        cout << "pixel len:     " << AnalyzeOptions.pixel_len << endl;
-       cout << "rel. c-loss:   " << AnalyzeOptions.rloss << endl;
+       cout << "rel. c-loss:   " << AnalyzeOptions.relative_carbon_loss << endl;
        cout << "savemode:      " << AnalyzeOptions.save_mode << endl;
        cout << "writemode:     " << AnalyzeOptions.write_mode << endl;
        cout << "bthres:        " << AnalyzeOptions.bthres << endl;
