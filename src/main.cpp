@@ -638,7 +638,7 @@ int main(int argc,char *argv[])
     if (cmode==ComandLine::ANALYZE)
     {
       myCmdLine.Analyze(str_ifile,str_bfile,AnalyzeOptions);
-    } else if (ComandLine::CONVERT || cmode==ComandLine::INFO)
+    } else if (cmode==ComandLine::CONVERT || cmode==ComandLine::INFO)
     {
       myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);
     } else if (cmode==ComandLine::TEST)

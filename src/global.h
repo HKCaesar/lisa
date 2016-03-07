@@ -20,7 +20,7 @@ using namespace std;
 // enable to compile against libtiff
 #define TIFF_SUPPORT
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.98.2 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.98.3 (c) 2014-2016 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -34,6 +34,17 @@ using namespace std;
 #endif
 
 #define EPS (1E-12)
+
+template<class T>
+typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
+    almost_equal(T x, T y, int ulp)
+{
+    // the machine epsilon has to be scaled to the magnitude of the values used
+    // and multiplied by the desired precision in ULPs (units in the last place)
+    return std::abs(x-y) < std::numeric_limits<T>::epsilon() * std::abs(x+y) * ulp
+    // unless the result is subnormal
+           || std::abs(x-y) < std::numeric_limits<T>::min();
+}
 
 template <class T> T clamp(T val,T min,T max) {return val<min?min:val>max?max:val;};
 template <class T> T div_signed(T val,T s){return val<0?-(((-val)+(1<<(s-1)))>>s):(val+(1<<(s-1)))>>s;};

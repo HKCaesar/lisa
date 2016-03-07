@@ -11,6 +11,9 @@ struct inter_cell
 
 // defines functions for dealing with projections & coordinates (wgs-84)
 class Projection {
+  const double WGS84_a=6378137.0;//length of semi-major axis
+  const double WGS84_f=1.0/298.257223563; //flattening of the ellipsoid
+  const double WGS84_b=(1.0-WGS84_f)*WGS84_a; //length of semi-minor axis of the ellipsoid
   public:
     Projection(int w,int h):width(w),height(h),top(0),left(0),right(0),bottom(0){};
     int ReadCoordinateFile(std::string &fname);
@@ -43,12 +46,15 @@ class Projection {
       return inter_matrix[y/dy];
     }
     void GenerateInterpolation(int cells);
-    void GetLatLong(int x,int y,double &geo_width,double &geo_height);
     void SetDummyInterpolation(int len);
     //double GetMeanPixelArea(){return mean_pixelarea;};
   protected:
-    double CalcDist_Haversine(double lat1,double long1,double lat2,double long2);
-    double CalcDist_Vincenty(double lat1,double long1,double lat2,double long2);
+    void GetLatLong(int x,int y,double &geo_width,double &geo_height);
+    double CalcDeltaLong(double lat);
+    int GetPPosLong(double dLong);
+    double GetLong(int w);
+    double CalcDist_Haversine(double lat1,double long1,double lat2,double long2,double precision=0);
+    double CalcDist_Vincenty(double lat1,double long1,double lat2,double long2,double precision=0);
     int width,height,numcells;
     double top,left,right,bottom;
     double cellsize;
