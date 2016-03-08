@@ -46,12 +46,12 @@ int IMGASC::ReadHeader()
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("YLLCORNER")==0) bottom=std::stod(val);
-  return 1;
+  else return 1;
   //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
   if (ukey.compare("CELLSIZE")==0) cellsize=std::stod(val);
-  return 1;
+  else return 1;
   //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   // if we came this far, it's probably an .asc file
