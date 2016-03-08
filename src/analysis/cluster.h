@@ -16,7 +16,7 @@ class AnalyzeOptions {
     mean_biomass=0.;
     relative_carbon_loss=0.5; // relative carbon loss in edge areas
 
-    ncells=1; // number of interpolation cells
+    //ncells=1; // number of interpolation cells
     edge_dept=100; // edge effect dept 100m
     min_fragment_size=0; // minimum fragment size 0 ha
     pixel_len=1; // pixel number for edge detection
@@ -32,7 +32,7 @@ class AnalyzeOptions {
     verbose=true;
   }
   double mean_biomass,bthres,relative_carbon_loss;
-  int ncells,edge_dept,min_fragment_size,pixel_len,write_mode,save_mode;
+  int edge_dept,min_fragment_size,pixel_len,write_mode,save_mode;
   int forest_cover_threshold,nrows;
   bool check_consistency,flush_clusters,verbose;
 };

@@ -263,7 +263,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
       myProj.CalculateCellSize();
       myProj.PrintInfo();
       cout << endl;
-      myProj.GenerateInterpolation(AnalyzeOptions.ncells);
+      myProj.GenerateInterpolation();
 
       // read biomass file
       BM myBiomass(AnalyzeOptions.mean_biomass);
@@ -592,7 +592,7 @@ int main(int argc,char *argv[])
         myGeoExtend.bottom=vextend[3];
       }
     }
-    if (myCmdOpt.SearchOption("-a","--analyze")) {cmode=ComandLine::ANALYZE;myCmdOpt.getopt(AnalyzeOptions.ncells);};
+    if (myCmdOpt.SearchOption("-a","--analyze")) cmode=ComandLine::ANALYZE;
     if (myCmdOpt.SearchOption("","--info")) cmode=ComandLine::INFO;
     if (myCmdOpt.SearchOption("-c","--convert")) cmode=ComandLine::CONVERT;
     if (myCmdOpt.SearchOption("-t","--test")) cmode=ComandLine::TEST;
@@ -619,7 +619,6 @@ int main(int argc,char *argv[])
 
     if (verbosity_level>1) {
        cout << "mode:          " << cmode << endl;
-       cout << "ncells:        " << AnalyzeOptions.ncells << endl;
        cout << "edge dept:     " << AnalyzeOptions.edge_dept << endl;
        cout << "mean biosmass: " << AnalyzeOptions.mean_biomass << endl;
        cout << "min fragment:  " << AnalyzeOptions.min_fragment_size << endl;

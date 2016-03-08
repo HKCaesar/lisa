@@ -64,6 +64,7 @@ double Projection::CalcDist_Haversine(double lat1,double long1,double lat2,doubl
   else return s;
 }
 
+// calculate shortest distance on an oblate ellipsoid using vencenty formula
 double Projection::CalcDist_Vincenty(double lat1,double long1,double lat2,double long2,double precision)
 {
   double phi1=Utils::ToRadians(lat1);
@@ -135,9 +136,9 @@ double Projection::GetLong(int w)
 void Projection::SetDummyInterpolation(int len)
 {
   inter_matrix.resize(1);
-  dy=height;
+  //dy=height;
   inter_cell icell;
-  icell.pixel_width=(double)len;
+  icell.pixel_width_top=icell.pixel_width_bottom=(double)len;
   icell.pixel_height=(double)len;
   icell.pixel_area=(double)(len*len) ;
   inter_matrix[0]=icell;
@@ -148,61 +149,117 @@ int Projection::GetPPosLong(double dLong)
   return round(dLong/cellsize);
 }
 
-double Projection::CalcDeltaLong(double lat)
+// calculate the distance in [m] of dLong at a certain latitude
+// Peter Osborne 2013, "The Mercator Projections"
+double Projection::CalcDeltaLong(double lat,double dLong=1.0)
 {
   double phi=Utils::ToRadians(lat);
-  double w=WGS84_b/WGS84_a*tan(phi);
-  double t=M_PI/180*WGS84_a*cos(w);
-  return t;
+  double sinphi=sin(phi);
+  double v_phi=WGS84_a/sqrt(1.-WGS84_e2*sinphi*sinphi); // radius of curvature along a parallel
+  return v_phi*cos(phi)*Utils::ToRadians(dLong);
+
+  //double w=atan(WGS84_b/WGS84_a*tan(phi)); // alternative formula
+  //return WGS84_a*cos(w)*Utils::ToRadians(1);
 }
 
-void Projection::GenerateInterpolation(int ncells)
+// calculate the distance in [m] on the meridian for a certain latitude
+// Peter Osborne 2013, "The Mercator Projections"
+double Projection::CalcDeltaLat(double lat)
 {
-  inter_matrix.resize(ncells);
-  double len_test=CalcDist_Vincenty(top,left,bottom,left); // calculate len from top to bottom
-  double l1,t1,l2,t2;
-  dy=ceil( (double)height/(double)ncells);
-  cout << "calculating pixel-area for " << ncells << " latitude(s), ";
-  cout << "clipping " << ncells*dy-height << " pixels" << endl;
+  const double phi=Utils::ToRadians(lat);
+  const double A0=6367449.156;
+  const double A2=16038.509;
+  const double A4=16.833;
+  const double A6=0.022;
+  const double A8=0.00003;
+  return A0*phi-A2*sin(2*phi)+A4*sin(4*phi)-A6*sin(6*phi)+A8*sin(8*phi);
+}
 
-  cout << "proj: 1degree of longitude at the equator = " << Utils::ConvertFixed(CalcDist_Vincenty(0,0,0,1)/1000,2) << "km" << endl;
+double Projection::CalcDeltaLat(double lat1,double lat2)
+{
+  return CalcDeltaLat(lat2)-CalcDeltaLat(lat1);
+}
+
+// calculate the surface area of a latitude-longitude quadrangle
+// vincenty formula (shortest distance), approximate the area with a trapezoid
+// assumes epsg:4326 projection
+// useful for small areas: vincenty goes along a geodesic not along a circle of latitudes for the width
+inter_cell Projection::CalcArea_geodesic(double top,double left,double bottom,double right)
+{
+  double sheight=CalcDist_Vincenty(top,left,bottom,left); // calculate vertical distance of left edge
+  double top_width=CalcDist_Vincenty(top,left,top,right); // calculate horizontal distances
+  double bottom_width=CalcDist_Vincenty(bottom,left,bottom,right);
+
+  double t=(bottom_width-top_width)/2;
+  double h=sqrt(sheight*sheight-t*t);
+  inter_cell cell;
+  cell.pixel_width_top=top_width; // calculate lengths in pixels
+  cell.pixel_width_bottom=bottom_width;
+  cell.pixel_height=sheight;
+  cell.pixel_area=(top_width+bottom_width)/2.*h;
+  return cell;
+}
+
+// calculate the surface area of a latitude-longitude quadrangle
+// parallel formula: DeltaLat, DeltaLong
+// assumes epsg:4326 projection
+// useful for small areas
+inter_cell Projection::CalcArea_parallel(double top,double left,double bottom,double right)
+{
+  double sheight=CalcDeltaLat(bottom,top);
+  double top_width=CalcDeltaLong(top,right-left);
+  double bottom_width=CalcDeltaLong(bottom,right-left);
+
+  double t=(bottom_width-top_width)/2;
+  double h=sqrt(sheight*sheight-t*t);
+  inter_cell cell;
+  cell.pixel_width_top=top_width; // calculate lengths in pixels
+  cell.pixel_width_bottom=bottom_width;
+  cell.pixel_height=sheight;
+  cell.pixel_area=(top_width+bottom_width)/2.*h;
+  return cell;
+}
+
+
+void Projection::GenerateInterpolation()
+{
+  inter_matrix.resize(height);
+  //double len_test=CalcDist_Vincenty(top,left,bottom,left); // calculate len from top to bottom
+  double len_test=CalcDeltaLat(bottom,top); // calculate len from top to bottom
+  double l1,t1,l2,t2;
+  //int dy=ceil( (double)height/(double)ncells);
+  cout << "calculating pixel-area for " << height << " latitude(s)\n";
+
+  cout << "proj: 1degree of longitude at 45 degree lat (geodesic) = " << Utils::ConvertFixed(CalcDist_Vincenty(45,0,45,1)/1000,4) << "km" << endl;
+  cout << "proj: 1degree of latitude  at 45 degree lat (geodesic) = " << Utils::ConvertFixed(CalcDist_Vincenty(45,0,46,0)/1000,4) << "km" << endl;
+
+  cout << "proj: 1degree of longitude at 45 degree lat (parallel) = " << Utils::ConvertFixed(CalcDeltaLong(45)/1000,4) << "km" << endl;
+  cout << "proj: 1degree of latitude  at 45 degree lat (parallel) = " << Utils::ConvertFixed(CalcDeltaLat(45,46)/1000,4) << "km" << endl;
 
   double len_calc=0.;
   double mean_pixel_area=0;
-  for (int i=0;i<ncells;i++)
+  double latitude=top;
+
+  for (int i=0;i<height;i++)
   {
-    int y1=i*dy;
-    int y2=(i+1)*dy;
-    if (y2>height) {y2=height;};
-    GetLatLong(0,y1,l1,t1);
-    GetLatLong(0,y2,l2,t2);
-    double len_verti=CalcDist_Vincenty(t1,left,t2,left);
-    double len_pixel_verti=len_verti/double(y2-y1);
+    GetLatLong(0,i,l1,t1); // slightly better precicion than using (latitude,latitude-cellsize)
+    GetLatLong(0,i+1,l2,t2);
 
-    //fix-me right-left might be to large > 180° or near antipodal
-    //double len_horiz=CalcDist_Vincenty(t1+(t2-t1)/2.,left,t1+(t2-t1)/2.,right);
-    //double len_pixel_horiz=len_horiz/double(width);
+    inter_cell cell1=CalcArea_parallel(t1,left,t2,left+cellsize);
+    inter_cell cell2=CalcArea_geodesic(t1,left,t2,left+cellsize);
 
-    // calculate at each latitude the length of one degree of longitude
-    double len_horiz=CalcDist_Vincenty(t1+(t2-t1)/2.,left,t1+(t2-t1)/2.,left+1.);
-    double len_pixel_horiz=len_horiz*cellsize;
-    //cout << len_pixel_horiz << endl;
+    mean_pixel_area+=cell1.pixel_area;
 
-    double pixel_area=len_pixel_horiz*len_pixel_verti;
+    //cout << cell1.pixel_area << " " << cell1.pixel_width_top << " " << cell2.pixel_height << endl;
+    //cout << cell2.pixel_area << " " << cell2.pixel_width_top << " " << cell2.pixel_height << endl << endl;
 
-    mean_pixel_area+=pixel_area;
-
-    inter_cell icell;
-    icell.pixel_width=len_pixel_horiz;
-    icell.pixel_height=len_pixel_verti;
-    icell.pixel_area=pixel_area;
-    inter_matrix[i]=icell;
-    //cout << fixed << setprecision(2) << t1+(t2-t1)/2. << " degree: " << icell.pixel_width << " m x" << icell.pixel_height << " m=" << icell.pixel_area << " m^2" << endl;
-
-    len_calc+=len_verti;
+    inter_matrix[i]=cell1;
+    len_calc+=cell1.pixel_height;
+    latitude-=cellsize;
   }
+  //cout << latitude << " " << bottom << endl;
   double diff=fabs(len_test-len_calc);
-  mean_pixel_area/=(double)ncells;
+  mean_pixel_area/=(double)height;
   // total difference should not be larger than 0.5m
   if (diff>0.) cout << "proj: calculated distances do not match (" << diff << " m)" << endl;
   cout << "proj: mean-pixel area: " << Utils::ConvertFixed(mean_pixel_area,2) << " m^2" << endl;

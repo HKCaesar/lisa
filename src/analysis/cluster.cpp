@@ -135,8 +135,8 @@ double ClusterBRI::CalculateBorder(inter_cell &icell,bool left,bool right,bool t
   double border_len=0.;
   if (left) {border_len+=icell.pixel_height;border_pixel++;};
   if (right) {border_len+=icell.pixel_height;border_pixel++;};
-  if (top) {border_len+=icell.pixel_width;border_pixel++;};
-  if (bottom) {border_len+=icell.pixel_width;border_pixel++;};
+  if (top) {border_len+=icell.pixel_width_top;border_pixel++;};
+  if (bottom) {border_len+=icell.pixel_width_bottom;border_pixel++;};
   return border_len;
 }
 
