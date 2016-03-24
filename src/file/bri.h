@@ -6,6 +6,7 @@
 //#include "model/cm.h"
 #include "bitio.h"
 #include "img.h"
+#include "../model/sic.h"
 //#include "../model/vle.h"
 
 /*#include "model/rangecoder.h"
@@ -42,7 +43,7 @@ class IMGBRI : public IMG
       for (int i=0;i<256;i++) pixel_hist[i]=0;
     };
     //void ConvertFromPGM(PGM &myPGM,std::string &str_ofile,bool globcover=false);
-    void ConvertToBRI(IMG &myIMG,std::string &str_outfile);
+    void ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE compression_type);
     void ConvertToPGM(IMGPGM &myPGM,std::string &str_ofile);
     IMGTYPE GetType(){return TYPEBRI;};
     int ReadHeader();
@@ -53,7 +54,7 @@ class IMGBRI : public IMG
     void Start();
     void Stop();
     void SeekStart();
-    int Create(std::string &str_ofile,int flags=0);
+    int Create(std::string &str_ofile);
     void Close();
     int WriteRow(uint8_t *linebuf);
     int ReadRow(uint8_t *linebuf);
@@ -65,17 +66,19 @@ class IMGBRI : public IMG
     void ConvertToBytes(uint8_t *buf,int nruns);
     int GetRuns(uint8_t *linebuf,int &flags);
     int CompressRuns(uint8_t *buf,int nruns,int flags);
-    int CompressRunsVLE(uint8_t *linebuf,uint8_t *outbuf);
+    //int CompressRunsVLE(uint8_t *linebuf,uint8_t *outbuf);
     int DecompressRuns(uint8_t *buf,int nruns,bool small_pos,bool small_runs);
-    int DecompressRunsVLE(uint8_t *inbuf,uint8_t *linebuf);
+    //int DecompressRunsVLE(uint8_t *inbuf,uint8_t *linebuf);
     std::vector <run> runs;
     off64_t hdrpos;
     uint8_t *tbuf,*tbuf2,*tbuf3;
-    int flags,comp_type;
+    int flags;
+    SIC::COMP_TYPE comptype;
     bool m_globcover;
     //int nlines_smallpos,nlines_smalllen;
     uint64_t num_invalidpixel;
     uint64_t pixel_hist[256];
+    SIC *mySIC;
 };
 
 #endif // BRI_H

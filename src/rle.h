@@ -3,44 +3,112 @@
 
 #include "global.h"
 
-struct trun {
+
+// simple bitpack-compression for clusterfiles
+class RLEPack2 {
+  public:
+      static void EncodeLabel(BitBuffer &bitout,int64_t diff,int nrun)
+      {
+        bitout.PutEliasGamma(std::abs(diff)+2);
+        bitout.PutBit(diff<0);
+        bitout.PutEliasGamma(nrun+1);
+      }
+      static int PackRow(int64_t *rowdata,uint32_t width,uint8_t *dstdata)
+      {
+        BitBuffer bitout(dstdata);
+        int64_t lval=rowdata[0];
+        int64_t llabel=0;
+        int nrun=0;
+        for (uint32_t i=1;i<width;i++) {
+            int64_t val=rowdata[i];
+
+            if (val==lval) nrun++;
+            else {
+              if (lval>0) {EncodeLabel(bitout,lval-llabel,nrun);llabel=lval;}
+              else {bitout.PutEliasGamma(1);bitout.PutEliasGamma(nrun+1);}
+              lval=val;
+              nrun=0;
+            }
+        }
+        if (lval>0) {EncodeLabel(bitout,lval-llabel,nrun);llabel=lval;}
+        else {bitout.PutEliasGamma(1);bitout.PutEliasGamma(nrun+1);}
+        bitout.Flush();
+        return bitout.GetBytesProcessed();
+      }
+      static void UnpackRow(uint8_t *srcdata,uint32_t width,int64_t *dstdata)
+      {
+        memset(dstdata,0,width*sizeof(int64_t));
+        BitBuffer bitin(srcdata);
+        int nrun;
+        uint32_t i=0;
+        int64_t llabel=0;
+        while (i<width) {
+          int64_t diff=bitin.GetEliasGamma();
+          if (diff>1) {
+             diff-=2;
+             bool sgn=bitin.GetBit();
+             nrun=bitin.GetEliasGamma();
+             if (sgn) diff=-diff;
+             int64_t label=diff+llabel;
+             for (int k=0;k<nrun;k++) dstdata[i+k]=label;
+             llabel=label;
+          } else nrun=bitin.GetEliasGamma();
+          i+=nrun;
+        }
+      }
+};
+
+/*struct trun {
   int64_t label;
   uint32_t pos;
   uint32_t nrun;
 };
 
+class RLECount {
+  public:
+    static void GetRuns(int64_t *rowdata,uint32_t width,vector <trun>&runs,int &labeltype,int &runtype)
+    {
+        runs.clear();
+        labeltype=runtype=0;
+
+        int64_t maxlabel=0;
+        uint32_t maxnrun=0;
+
+        uint32_t i=0;
+        while (i<width) { // count runs
+         if (rowdata[i]) {
+          uint32_t nrun=1;
+          int64_t label=rowdata[i];
+          while ((i+nrun<width && label==rowdata[i+nrun])) nrun++;
+          trun myrun;
+          myrun.label=label;
+          myrun.pos=i;
+          myrun.nrun=nrun;
+          runs.push_back(myrun);
+          if (nrun>maxnrun) maxnrun=nrun;
+          if (label>maxlabel) maxlabel=label;
+          i+=nrun;
+         } else i++;
+       }
+       if (maxlabel<(1LL<<24)) labeltype=0;
+       else if (maxlabel<(1LL<<32)) labeltype=1;
+       else if (maxlabel<(1LL<<48)) labeltype=2;
+       else labeltype=3;
+
+       if (maxnrun>=(1<<16)) runtype=1;
+    }
+};
+
+
+// simple bitpack-compression for clusterfiles
 class RLEPack {
   public:
 static int PackRow(int64_t *rowdata,uint32_t width,uint8_t *dstdata)
 {
   std::vector <trun> runs;
-  uint32_t i=0;
-  uint32_t maxnrun=0;
-  int64_t maxlabel=0;
-  while (i<width)
-  {
-     if (rowdata[i]) {
-       uint32_t nrun=1;
-       int64_t label=rowdata[i];
-       while ((i+nrun<width && label==rowdata[i+nrun])) nrun++;
-       trun myrun;
-       myrun.label=label;
-       myrun.pos=i;
-       myrun.nrun=nrun;
-       runs.push_back(myrun);
-       if (nrun>maxnrun) maxnrun=nrun;
-       if (label>maxlabel) maxlabel=label;
-       i+=nrun;
-     } else i++;
-  }
-  int labeltype=0;
-  if (maxlabel<(1LL<<24)) labeltype=0;
-  else if (maxlabel<(1LL<<32)) labeltype=1;
-  else if (maxlabel<(1LL<<48)) labeltype=2;
-  else labeltype=3;
+  int labeltype,runtype;
+  RLECount::GetRuns(rowdata,width,runs,labeltype,runtype);
 
-  int runtype=0;
-  if (maxnrun>=(1<<16)) runtype=1;
   Utils::Put32LH(dstdata,runs.size());
   dstdata[4]=(uint8_t)labeltype;
   dstdata[5]=(uint8_t)runtype;
@@ -92,5 +160,5 @@ static void UnpackRow(uint8_t *srcdata,uint32_t width,int64_t *dstdata)
     for (uint32_t k=0;k<nrun;k++) dstdata[idx+k]=label;
   }
 }
-};
+};*/
 #endif // RLE_H

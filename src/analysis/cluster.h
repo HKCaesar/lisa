@@ -69,6 +69,7 @@ class ClusterBRI
     void CheckClusters();
     void DeleteTempFiles();
     cluster_stats &GetClusterStats(){return myStats;};
+    static double CalculateEdgeAreaDE(double area,double edge_len,double edge_effect_dept);
   protected:
     void FlushClusters(int cur_row);
     void AddClusterStats(int64_t parea,const tcelldata &cell);

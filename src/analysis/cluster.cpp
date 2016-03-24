@@ -46,16 +46,22 @@ int64_t ClusterBRI::GetNumRoots()
 }
 
 // calculate edge-effected area
-double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len)
+double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len,double edge_effect_dept)
 {
   double edge_area=0.;
-  if (edge_len*opt.analyze_opt.edge_dept>4.*area) edge_area=area;
+  if (edge_len*edge_effect_dept>4.*area) edge_area=area;
   else  // calculate size-index from didham & ewers core area model
   {
     const double si=edge_len/(2.*sqrt(M_PI*area));
-    edge_area=opt.analyze_opt.edge_dept*(edge_len - (si*si)*M_PI*opt.analyze_opt.edge_dept);
+    edge_area=edge_effect_dept*(edge_len - (si*si)*M_PI*edge_effect_dept);
   }
   return edge_area;
+}
+
+// calculate edge-effected area
+double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len)
+{
+  return CalculateEdgeAreaDE(area,edge_len,opt.analyze_opt.edge_dept);
 }
 
 double ClusterBRI::CalculateEdgeAreaCircle(double area)
@@ -163,11 +169,15 @@ void ClusterBRI::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &brigh
 // only for testing, should be obsolet
 void ClusterBRI::WriteMarkedRow(int64_t *clusterrow,uint32_t width,FILE *file)
 {
-  int outsize=RLEPack::PackRow(clusterrow,width,clusterrowdata);
-  RLEPack::UnpackRow(clusterrowdata,width,rowtmp);
+  memset(rowtmp,0,width*sizeof(int64_t));
+  int outsize=RLEPack2::PackRow(clusterrow,width,clusterrowdata);
+  RLEPack2::UnpackRow(clusterrowdata,width,rowtmp);
+  int nerr=0;
   for (uint32_t i=0;i<width;i++) {
-    if (rowtmp[i]!=clusterrow[i]) cout << "error in decompression\n" << endl;
+    if (rowtmp[i]!=clusterrow[i]) {nerr++;cout << "<" << clusterrow[i] << " " << rowtmp[i] << ">";};
   }
+  if (nerr) cout << nerr << " errors in decompression\n";
+  //else cout << "decompression ok\n";
   uint8_t tbuf[4];Utils::Put32LH(tbuf,outsize);fwrite(tbuf,1,4,file);
   fwrite(clusterrowdata,1,outsize,file);
 }
@@ -319,7 +329,7 @@ void ClusterBRI::SaveSmallClusterData(std::string &fname)
     {
        ofs_clusterfile.read((char*)buffer,8*4);
        tcelldata cell;
-       int64_t parea=Utils::Get64LH(buffer);
+       //int64_t parea=Utils::Get64LH(buffer);
        cell.area=Utils::GetDouble(buffer+8);
        cell.border=Utils::GetDouble(buffer+16);
        cell.biomass=Utils::GetDouble(buffer+24);
@@ -393,13 +403,15 @@ double ClusterBRI::CalculateCLossPerHA(int64_t label)
   return c_loss;
 }
 
+//somehow overlaps with "savefullclusterdata"
 void ClusterBRI::WriteLabelFile()
 {
+  char stmp[256];
   ofstream labelfile(opt.str_labelfile);
   for (int64_t i=1;i<=max_cluster_label;i++) {
      if (cdata[i]<0) {
-        double closs=CalculateCLossPerHA(i);
-        labelfile << i << "," << Utils::ConvertFixed(closs,4) << "\n";
+        snprintf(stmp,256,"%jd,%jd,%0.4f,%0.4f,%0.4f\n",(intmax_t)i,(intmax_t)-cdata[i],clusterdata[i].area,clusterdata[i].border,CalculateCLossPerHA(i));
+        labelfile << stmp;
      }
   }
   labelfile.close();
@@ -434,7 +446,7 @@ void ClusterBRI::WriteClusterfile()
        nread=fread(clusterrowdata,1,outsize,clusterfile1);
        if (nread!=outsize) cout << " error reading clusterfile1 at line: " << row << endl;
        else {
-         RLEPack::UnpackRow(clusterrowdata,bri_width,labelrow);
+         RLEPack2::UnpackRow(clusterrowdata,bri_width,labelrow);
          for (int i=0;i<bri_width;i++) {
           if (labelrow[i]) {
             int64_t root=FindRoot(labelrow[i]);
@@ -455,7 +467,7 @@ void ClusterBRI::WriteClusterfile()
   fclose(clusterfile1);
   fclose(clusterfile2);
   cout << "deleting '" << opt.str_clusterfile1 << "'\n";
-  std::remove(opt.str_clusterfile1.c_str());
+  //std::remove(opt.str_clusterfile1.c_str());
 }
 
 // check connected components for consistency

@@ -17,6 +17,24 @@ class RiceParam {
       cout << " warning (Rice): optimal k for val: " << val << " not found!" << endl;
       return 0;
     }
+    int CalcRiceOptimalK(int val)
+    {
+      for (int k=0;k<28;k++)
+      {
+         if (RiceCost(val,k)<RiceCost(val,k+1)) return k;
+      }
+      cout << "rp: could not find optimal k\n";
+      return -1;
+    }
+    int CalcExpOptimalK(int val)
+    {
+      for (int k=0;k<28;k++)
+      {
+         if (ExpCost(val,k)<ExpCost(val,k+1)) return k;
+      }
+      cout << "rp: could not find optimal k\n";
+      return -1;
+    }
   private:
     void Calc() {
       kmax=0;
@@ -34,12 +52,20 @@ class RiceParam {
       int q=val>>k;
       return q+1+k;
     }
+    int ExpCost(int val,int k) {
+        int c=0;
+        while (val >= (1<<k)) {
+            c++;
+            val-=(1<<k);
+            k++;
+        }
+        c+=1;
+        c+=k;
+        return c;
+    }
     int ub[32]; // upper bound for optimal k
     int vmax,kmax;
 };
-
-extern RiceParam myRiceParam;
-
 
 
 #endif // VLE_H

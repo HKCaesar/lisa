@@ -19,7 +19,7 @@ class Projection {
   const double WGS84_n=WGS84_f/(2.0-WGS84_f); //third flattening
   public:
     Projection(int w,int h):width(w),height(h),top(0),left(0),right(0),bottom(0){};
-    int ReadCoordinateFile(std::string &fname);
+    int ReadCoordinateFile(const std::string &fname);
     void SetProjection(double ttop,double tleft,double tbottom,double tright);
     double getLeft(){return left;};
     double getTop(){return top;};
@@ -52,8 +52,12 @@ class Projection {
     void SetDummyInterpolation(int len);
     //double GetMeanPixelArea(){return mean_pixelarea;};
   protected:
-    inter_cell CalcArea_geodesic(double top,double left,double bottom,double right);
-    inter_cell CalcArea_parallel(double top,double left,double bottom,double right);
+    //inter_cell CalcArea_geodesic(double top,double left,double bottom,double right);
+    void CalcArea_trapezoid_parallel(double top,double left,double bottom,double right,double &sheight,double &top_width,double &bottom_width,double &area);
+    inter_cell CalcPixelArea_trapezoid(double top);
+    inter_cell CalcPixelArea_exact(double top);
+    double CalcArea_rectangle(double top,double left,double right);
+
     void GetLatLong(int x,int y,double &geo_width,double &geo_height);
     double CalcDeltaLong(double lat,double dLong);
     double CalcDeltaLat(double lat);

@@ -7,6 +7,7 @@ void IMGBRI::Start()
   tbuf3=new uint8_t[10*width];
   rowbuffer=new uint8_t[width];
   runs.resize(width);
+  mySIC = new SIC(width,comptype);
 }
 
 void IMGBRI::Stop()
@@ -15,16 +16,24 @@ void IMGBRI::Stop()
   if (tbuf2) delete []tbuf2,tbuf2=0;
   if (tbuf3) delete []tbuf3,tbuf3=0;
   if (rowbuffer) delete []rowbuffer,rowbuffer=0;
+  if (mySIC) delete mySIC;
 }
 
 void IMGBRI::PrintInfo()
 {
   cout << endl << "BRI";
-  cout << ": " << width << "x" << height << ", flags: " << flags << endl;
+  cout << ": " << width << "x" << height << ", flags: " << flags << ", comp: ";
+  switch (comptype) {
+    case SIC::COMP_NONE:cout << "none";break;
+    case SIC::COMP_BILEVEL:cout << "bilevel";break;
+    case SIC::COMP_GRAY:cout << "gray level";break;
+    default: cout << "unknown";break;
+  }
+  cout << endl;
   cout << "filesize: " << (fsize>>20) << " MiB, data start: " << hdrpos << " bytes" << endl;
 }
 
-int IMGBRI::Create(std::string &str_ofile,int flags)
+int IMGBRI::Create(std::string &str_ofile)
 {
   file=fopen(str_ofile.c_str(),"wb");
   if (file)
@@ -33,8 +42,16 @@ int IMGBRI::Create(std::string &str_ofile,int flags)
     Utils::Put32LH(buf,99991); // magic number
     Utils::Put32LH(buf+4,width); // width
     Utils::Put32LH(buf+8,height); // height
+    int flags=0;
+    int t;
+    switch (comptype) {
+      case SIC::COMP_NONE:t=0;break;
+      case SIC::COMP_BILEVEL:t=1;break;
+      case SIC::COMP_GRAY:t=2;break;
+      default: t=0;break;
+    }
+    flags|=t;
     Utils::Put32LH(buf+12,flags); // flags
-    comp_type=flags&15; // set compression type
     fwrite(buf,1,16,file);
     return 0;
   } else return 1;
@@ -51,7 +68,11 @@ int IMGBRI::ReadHeader()
     width=Utils::Get32LH(buf+4);
     height=Utils::Get32LH(buf+8);
     flags=Utils::Get32LH(buf+12);
-    comp_type=flags&15;
+    switch (flags&15) {
+      case 0:comptype=SIC::COMP_NONE;break;
+      case 1:comptype=SIC::COMP_BILEVEL;break;
+      case 2:comptype=SIC::COMP_GRAY;break;
+    }
     hdrpos=ftello64(file);
     return 0;
   } else {
@@ -161,55 +182,6 @@ int IMGBRI::DecompressRuns(uint8_t *buf,int nruns,bool small_pos,bool small_runs
   return idx;
 }
 
-
-// Compression type - 1
-// runs of 0/1 are coded via VLE RiceCodes
-
-int IMGBRI::CompressRunsVLE(uint8_t *linebuf,uint8_t *outbuf)
-{
-  BitBuffer bitout(outbuf+4);
-  bool sbit=linebuf[0];
-  bitout.PutBits(sbit,1);
-  int nrun=0;
-  //int N=1,A=256;
-  for (int i=1;i<width;i++)
-  {
-     if (linebuf[i]==sbit) nrun++;
-     else {
-        //bitout.PutRice(nrun,BitBuffer::EstimateK(N,A));
-        bitout.PutEliasGamma(nrun+1);
-        //if (N>=256) {N>>=1;A>>=1;};
-        //N++;A+=nrun;
-        nrun=0;
-        sbit=!sbit; // flip bit
-     }
-  }
-  //bitout.PutRice(nrun,BitBuffer::EstimateK(N,A));
-  bitout.PutEliasGamma(nrun+1);
-  bitout.Flush();
-  Utils::Put32LH(outbuf,bitout.GetBytesProcessed());
-  return bitout.GetBytesProcessed()+4;
-}
-
-int IMGBRI::DecompressRunsVLE(uint8_t *inbuf,uint8_t *linebuf)
-{
-  BitBuffer bitin(inbuf+4);
-  bool sbit=bitin.GetBits(1);
-
-  //int N=1,A=256;
-  int i=0;
-  while (i<width) {
-    //int nrun=bitin.GetRice(BitBuffer::EstimateK(N,A));
-    int nrun=bitin.GetEliasGamma()-1;
-    for (int r=0;r<(nrun+1);r++) linebuf[i++]=sbit;
-    //if (N>=256) {N>>=1;A>>=1;};
-    //N++;A+=nrun;
-    sbit=!sbit;
-  }
-  return bitin.GetBytesProcessed()+4;
-}
-
-
 void IMGBRI::SeekStart()
 {
   fseeko64(file,hdrpos,SEEK_SET);
@@ -234,7 +206,7 @@ void IMGBRI::ConvertToBytes(uint8_t *buf,int nruns)
 int IMGBRI::ReadRow(uint8_t *buf)
 {
   int nread=0;
-  if (comp_type==0) { // obsolete
+  if (comptype==SIC::COMP_NONE) { // obsolete
     nread=fread(tbuf,1,4,file);
     uint32_t row_data=Utils::Get32LH(tbuf);
     bool small_len=BitTest(row_data,31);
@@ -257,34 +229,36 @@ int IMGBRI::ReadRow(uint8_t *buf)
     DecompressRuns(tbuf,nruns,small_pos,small_len);
     ConvertToBytes(buf,nruns);
     return nread;
-  } else if (comp_type==1) {
+  } else if (comptype==SIC::COMP_BILEVEL) {
     nread=fread(tbuf,1,4,file);
     uint32_t bytes_to_read=Utils::Get32LH(tbuf);
     nread+=fread(tbuf+4,1,bytes_to_read,file);
-    int comp_bufpos=DecompressRunsVLE(tbuf,buf);
+    int comp_bufpos=mySIC->DecompressRowBinary(tbuf,buf);
     if (nread!=comp_bufpos) cout << " error: invalid decompression: " << nread << " != " << comp_bufpos << endl;
   }
   return nread;
 }
 
-//#define LISA_DEBUG
-
 int IMGBRI::WriteRow(uint8_t *linebuf)
 {
-   int ncompressed=CompressRunsVLE(linebuf,tbuf);
-   #ifdef LISA_DEBUG
-     int dcompressed=DecompressRunsVLE(tbuf,tbuf2);
-     int nerror=0;
-     for (int i=0;i<width;i++)
-       if (tbuf2[i]!=linebuf[i]) nerror++;
-     if (nerror) cout << nerror << " number of errors in line" << endl;
-     if (dcompressed!=ncompressed) cout << " decompression error: " << ncompressed << ":" << dcompressed << endl;
-    #endif
-    int nwritten=fwrite(tbuf,1,ncompressed,file);
-    if (nwritten!=ncompressed) {cout << "error: can not write" << endl;return 0;};
-    return nwritten;
+  int ncompressed=0;
+  if (comptype==SIC::COMP_BILEVEL) {
+       ncompressed=mySIC->CompressRowBinary(linebuf,tbuf);
+       mySIC->DecompressRowBinary(tbuf,tbuf2);
+       int nerr=0;
+       for (int i=0;i<width;i++) if (linebuf[i]!=tbuf2[i]) nerr++;
+       if (nerr) cout << nerr << " errors in decompression\n";
+  } else if (comptype==SIC::COMP_GRAY) {
+    ncompressed=mySIC->CompressRowGrey(linebuf,tbuf);
+    /*mySIC->DecompressRowGrey(tbuf,tbuf2);
+    for (int i=0;i<width;i++) {
+        if (linebuf[i]!=tbuf2[i]) cout << "error in decompression at pos: " << i << endl;
+    }*/
+  }
+  int nwritten=fwrite(tbuf,1,ncompressed,file);
+  if  (nwritten!=ncompressed) {cout << "error: can not write" << endl;return 0;};
+  return nwritten;
 }
-
 
 void IMGBRI::PrintProgress(int y,int maxline,FILE *file)
 {
@@ -301,11 +275,13 @@ void IMGBRI::PrintCompression(uint64_t insize,FILE *infile,FILE *outfile)
   cout << (inpos>>20) << " MB (" << Utils::ConvertFixed(ratio1,1) << "%)->" << (outpos>>20) << " MB: " << Utils::ConvertFixed(ratio2,1) << "% \r";
 }
 
-void IMGBRI::ConvertToBRI(IMG &myIMG,std::string &str_outfile)
+void IMGBRI::ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE compression_type)
 {
+  comptype=compression_type;
+
   SetWidth(myIMG.GetWidth());
   SetHeight(myIMG.GetHeight());
-  if (Create(str_outfile,1)==0) {
+  if (Create(str_outfile)==0) {
     uint8_t *rowbuffer=new uint8_t[myIMG.GetWidth()];
     Start();
     myIMG.StartReader();
@@ -313,9 +289,6 @@ void IMGBRI::ConvertToBRI(IMG &myIMG,std::string &str_outfile)
     for (int y=0;y<myIMG.GetHeight();y++)
     {
       myIMG.ReadRow(rowbuffer);
-      for (int i=0;i<width;i++) {
-        if (rowbuffer[i]!=0 && rowbuffer[i]!=1) {cout << "  warning: invalid input value: " << rowbuffer[i];delete []rowbuffer;return;};
-      }
       if ((y+1)%100==0) PrintProgress(y+1,myIMG.GetHeight(),file);
       total_written+=WriteRow(rowbuffer);
     }

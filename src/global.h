@@ -20,7 +20,7 @@ using namespace std;
 // enable to compile against libtiff
 #define TIFF_SUPPORT
 
-#define LISA_VERSION "Large Image Spatial Analysis v0.98.4 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v0.99 (c) 2014-2016 - Sebastian Lehmann"
 
 #define BOOL(x) (!(!(x)))
 
@@ -90,9 +90,9 @@ class GeoUtils {
   public:
       static void PrintInfo(double top,double left,double right,double bottom,double cellsize)
       {
-        cout << "top: " << top << ", left: " << left << ", right: " << right << ", bottom: " << bottom << endl;
-        cout << "dLat: " << deltalat(top,bottom) << " degree, dLong: " << deltalong(left,right) << " degree" << endl;
-        cout << "cellsize: " << cellsize << " degree = " << GeoUtils::cellsize2arcsec(cellsize) << " arcsec = " << GeoUtils::cellsize2m(cellsize) << " m" << endl;
+        cout << "geo: top: " << top << ", left: " << left << ", right: " << right << ", bottom: " << bottom << endl;
+        cout << "geo: dlat: " << deltalat(top,bottom) << " degree, dlong: " << deltalong(left,right) << " degree" << endl;
+        cout << "geo: cellsize: " << cellsize << " degree = " << GeoUtils::cellsize2arcsec(cellsize) << " arcsec = " << GeoUtils::cellsize2m(cellsize) << " m" << endl;
       }
       static double deltalat(double top,double bottom)
       {

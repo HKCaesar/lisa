@@ -135,7 +135,7 @@ void SplitPath(const std::string &str,std::string &path,std::string &fname)
   fname=str.substr(found+1);
 }
 
-double BlockReduce(float **rows,int width,int startx,int xblock,int yblock)
+double BlockReduce(double **rows,int width,int startx,int xblock,int yblock)
 {
   double sum=0.0;
   int64_t k=0;
@@ -148,7 +148,7 @@ double BlockReduce(float **rows,int width,int startx,int xblock,int yblock)
   return sum/(double)k;
 }
 
-void RowReduce(ofstream &stream,float **rows,int width,int xblock,int yblock)
+void RowReduce(ofstream &stream,double **rows,int width,int xblock,int yblock)
 {
   int nblocks=ceil(width/(double)xblock);
   for (int block=0;block<nblocks;block++)
@@ -185,16 +185,20 @@ void PrintVersion(int mode=0)
 class ComandLine {
   struct tlabel {
     int64_t label;
-    float closs;
+    double area;
+    double edge_len;
+    double closs;
   };
   public:
     enum METHOD {NONE,ANALYZE,CONVERT,INFO,MAP,TEST,VERSION};
     void Analyze(const std::string &str_ifile,const std::string &str_bfile,AnalyzeOptions &AnalyzeOptions);
     void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
     void TestConsistency();
-    void Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
+    void Map(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend);
     int OpenInputRaster(const std::string str_ifile);
   private:
+    int ReadLabels(const string &strfile,int64_t &maxlabel,vector <tlabel>&labels);
+    void TransferLabels(const vector <tlabel>&labels,int64_t maxlabel,int ltype,vector <double>&reflabels);
     IMGPGM myPGM;
     IMGBRI myBRI;
     IMGASC myASC;
@@ -330,7 +334,7 @@ void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int
           if (Utils::OpenWriteCheck(str_efile,force_overwrite)) myASC.WriteExtend(str_efile,8);
         }
         IMGBRI outBRI;
-        outBRI.ConvertToBRI(*myIMG,str_ofile);
+        outBRI.ConvertToBRI(*myIMG,str_ofile,SIC::COMP_BILEVEL);
       }
       myIMG->Close();
     } else cerr << "  warning: unsupported raster input format" << endl;
@@ -350,138 +354,159 @@ void ComandLine::TestConsistency()
   TestConsistence(SimpleRand::rU_Int(1,dim),SimpleRand::rU_Int(1,dim),1,0);
 }
 
-void ComandLine::Reduce(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend)
+int ComandLine::ReadLabels(const string &strfile,int64_t &maxlabel,vector <tlabel>&labels)
 {
-      cout << str_ifile << endl;
-      std::vector <tlabel> vlabel;
-      std::vector <float> reflabel;
-      std::string str_lfile,str_rfile,str_pfile;
-      Utils::ReplaceExt(str_ifile,str_lfile,".lab",true);
-      Utils::ReplaceExt(str_ifile,str_rfile,".dat",true);
-      Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
+  maxlabel=0;
+  ifstream ifile(strfile);
+  if (ifile.is_open()) {
+    int64_t flength=Utils::GetStreamSize(ifile);
+    double total_area=0.;
+    double total_edgelen=0.;
+    std::string line;
+    int cnt=0;
+    while ( getline (ifile,line) )
+    {
+      if ( (++cnt)%10000==0) {
+        float fratio=ifile.tellg()*100.0/(double)flength;
+        cout << "reading labels: '" << strfile << "': ";
+        cout << Utils::ConvertFixed(fratio,1) << "%\r";
+        cnt=0;
+      }
+      std::vector <std::string> tokens;
+      StringUtils::Tokenize(line,tokens,", \t\n");
+      if (tokens.size()!=5) cout << "warning: undefined number of tokens: " << tokens.size() << "\n";
+      else {
+        tlabel labelentry;
+        labelentry.label=strtoll(tokens[0].c_str(),NULL,10);
+        labelentry.area=atof(tokens[2].c_str());
+        labelentry.edge_len=atof(tokens[3].c_str());
+        labelentry.closs=atof(tokens[4].c_str());
 
+        total_area+=labelentry.area;
+        total_edgelen+=labelentry.edge_len;
+        if (labelentry.label>maxlabel) maxlabel=labelentry.label;
+        labels.push_back(labelentry);
+      }
+    }
+    ifile.close();
+    cout << endl;
+    cout << "number of labels: " << labels.size() << "\n";
+    cout << "total area:       " << Utils::ConvertFixed(Utils::SqMetre_To_MillHa(total_area),2) << " 10^6 ha" << endl;
+    cout << "edge len:         " << Utils::ConvertFixed(Utils::Metre_To_MillKm(total_edgelen),2) << " 10^6 km" << endl;
+    return 0;
+  } else return 1;
+}
 
-      ifstream lfile(str_lfile);
-      int64_t maxlabel=0;
-      int cnt=0;
-      if (lfile.is_open()) {
-        int64_t flength=Utils::GetStreamSize(lfile);
-        std::string line;
-        while ( getline (lfile,line) )
-        {
-          cnt++;
-          if (cnt%10000==0) {
-            float fratio=lfile.tellg()*100.0/(double)flength;
-            cout << "reading labels: '" << str_lfile << "': ";
-            cout << Utils::ConvertFixed(fratio,1) << "%\r";
-            cnt=0;
-          }
-          std::vector <std::string> tokens;
-          StringUtils::Tokenize(line,tokens,", \t\n");
-          if (tokens.size()!=2) cout << "warning: undefined number of tokens: " << tokens.size() << "\n";
-          else {
-            tlabel labelentry;
-            labelentry.label=strtoll(tokens[0].c_str(),NULL,10);
-            labelentry.closs=atof(tokens[1].c_str());
-            if (labelentry.label>maxlabel) maxlabel=labelentry.label;
-            vlabel.push_back(labelentry);
+void ComandLine::TransferLabels(const vector <tlabel>&labels,int64_t maxlabel,int ltype,vector <double>&reflabels)
+{
+  cout << "transfering labels: ";
+  switch (ltype) {
+    case 0: cout << "closs";break;
+    case 1: cout << "core/area";break;
+    default:cout << "unknown";break;
+  }
+  cout << endl;
+  reflabels.resize(maxlabel+1);
+  for (size_t i=0;i<labels.size();i++) {
+    double val=0.;
+    if (ltype==0) val=labels[i].closs;
+    else if (ltype==1) {
+      double edge_area=ClusterBRI::CalculateEdgeAreaDE(labels[i].area,labels[i].edge_len,100);
+      double core_area=labels[i].area-edge_area;
+      val=core_area/labels[i].area;
+    }
+    reflabels[labels[i].label]=val;
+  }
+}
+
+void ComandLine::Map(const std::string &str_ifile,int reduction_factor,const geoExtend &myExtend)
+{
+  std::string str_lfile,str_rfile,str_pfile;
+  Utils::ReplaceExt(str_ifile,str_lfile,".lab",true);
+  Utils::ReplaceExt(str_ifile,str_rfile,".dat",true);
+  Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
+
+  std::vector <tlabel> labels;
+  std::vector <double> reflabels;
+  int64_t maxlabel;
+  ReadLabels(str_lfile,maxlabel,labels);
+  TransferLabels(labels,maxlabel,1,reflabels);
+  labels.clear();
+
+  cout << "reading clusters from '" << str_ifile << "': ";
+  FILE *clusterfile=fopen(str_ifile.c_str(),"rb");
+  if (clusterfile!=NULL) {
+    uint8_t tbuf[8];
+    fread(tbuf,1,8,clusterfile);
+    uint32_t width=Utils::Get32LH(tbuf);
+    uint32_t height=Utils::Get32LH(tbuf+4);
+    cout << width << "x" << height << endl;
+
+    Projection Proj(width,height);
+    Proj.ReadCoordinateFile(str_pfile);
+    Proj.CalculateCellSize();
+
+    int pleft,pright,ptop,pbottom;
+    Frame::SetExtend(Proj.getLeft(),Proj.getTop(),Proj.getCellsize(),myExtend,width,height,pleft,ptop,pright,pbottom);
+
+    uint8_t *rowdata=new uint8_t[width*8];
+    int64_t *labelrow=new int64_t[width];
+    size_t tread;
+    //vector <vector<double>>datarows(reduction_factor,vector<double>(width));
+    double **datarows=new double*[reduction_factor];
+    for (int i=0;i<reduction_factor;i++) datarows[i]=new double[width];
+
+    cout << "reduction factor: 1:" << reduction_factor << ", array: " << (((int64_t)reduction_factor*(int64_t)width*sizeof(double))>>20) << " mb\n";
+
+    ofstream rfile(str_rfile);
+
+    if (ptop) {
+      for (int i=0;i<ptop-1;i++) {
+        tread=fread(tbuf,1,4,clusterfile);
+        uint32_t rowsize=Utils::Get32LH(tbuf);
+        fseek(clusterfile,rowsize,SEEK_CUR);
+        if (i%10==0) cout << "skipping " << (ptop-1) << " lines: " << Utils::ConvertFixed(i*100/(double)(ptop-1),1) << "%\r";
+      }
+      cout << endl;
+    }
+
+    int64_t total_cells=0;
+    int rowcnt=0;
+    for (int row=ptop;row<pbottom;row++) {
+        tread=fread(tbuf,1,4,clusterfile);
+        uint32_t rowsize=Utils::Get32LH(tbuf);
+        tread=fread(rowdata,1,rowsize,clusterfile); // possible buffer overflow if rowsize>8*width
+        if (tread!=rowsize) cout << "warning: could not read\n";
+        else {
+          RLEPack2::UnpackRow(rowdata,width,labelrow);
+          double *drow=datarows[rowcnt];
+          int j=0;
+          for (int i=pleft;i<pright;i++) {
+            drow[j]=0.;
+            if (labelrow[i]) {
+              total_cells++;
+              if (labelrow[i]>maxlabel) cout << "warning: label outside range\n";
+              else drow[j]=reflabels[labelrow[i]];
+            };
+            j++;
           }
         }
-        lfile.close();
-        cout << "\nok. number of labels: " << vlabel.size() << "\n";
-
-        cout << "transfering labels...";
-        reflabel.resize(maxlabel+1);
-        for (size_t i=0;i<vlabel.size();i++) {
-            reflabel[vlabel[i].label]=vlabel[i].closs;
+        rowcnt++;
+        cout << (row+1) << "/" << height <<"\r";
+        if (rowcnt>=reduction_factor) {
+          RowReduce(rfile,datarows,pright-pleft,reduction_factor,rowcnt);
+          rowcnt=0;
         }
-        cout << "ok\n";
-        vlabel.resize(0);
-
-        cout << "reading clusters from '" << str_ifile << "'...";
-        FILE *clusterfile=fopen(str_ifile.c_str(),"rb");
-        if (clusterfile!=NULL) {
-            uint8_t tbuf[8];
-            fread(tbuf,1,8,clusterfile);
-            uint32_t width=Utils::Get32LH(tbuf);
-            uint32_t height=Utils::Get32LH(tbuf+4);
-            cout << width << "x" << height << endl;
-
-            Projection Proj(width,height);
-            Proj.ReadCoordinateFile(str_pfile);
-            Proj.CalculateCellSize();
-            cout << Proj.getCellsize() << endl;
-
-            int pleft,pright,ptop,pbottom;
-            Frame::SetExtend(Proj.getLeft(),Proj.getTop(),Proj.getCellsize(),myExtend,width,height,pleft,ptop,pright,pbottom);
-
-            uint8_t *rowdata=new uint8_t[width*8];
-            int64_t *labelrow=new int64_t[width];
-            size_t tread;
-            float **datarows=new float*[reduction_factor];
-            for (int i=0;i<reduction_factor;i++) datarows[i]=new float[width];
-            cout << "reduction factor: 1:" << reduction_factor << ", array: " << (((int64_t)reduction_factor*(int64_t)width*sizeof(float))>>20) << " mb\n";
-
-            ofstream rfile(str_rfile);
-
-            if (ptop) {
-             for (int i=0;i<ptop-1;i++) {
-               tread=fread(tbuf,1,4,clusterfile);
-               uint32_t rowsize=Utils::Get32LH(tbuf);
-               fseek(clusterfile,rowsize,SEEK_CUR);
-               if (i%10==0) cout << "skipping " << (ptop-1) << " lines: " << Utils::ConvertFixed(i*100/(double)(ptop-1),1) << "%\r";
-             }
-             cout << endl;
-            }
-
-            int64_t total_cells=0;
-            int rowcnt=0;
-            for (int row=ptop;row<pbottom;row++) {
-
-                tread=fread(tbuf,1,4,clusterfile);
-                uint32_t rowsize=Utils::Get32LH(tbuf);
-                //cout << rowsize << endl;
-                tread=fread(rowdata,1,rowsize,clusterfile); // possible buffer overflow if rowsize>8*width
-                if (tread!=rowsize) cout << "warning: could not read\n";
-                else {
-                  RLEPack::UnpackRow(rowdata,width,labelrow);
-                  float *drow=datarows[rowcnt];
-                  int j=0;
-                  for (int i=pleft;i<pright;i++) {
-                    drow[j]=0.;
-                    if (labelrow[i]) {
-                        total_cells++;
-                        if (labelrow[i]>maxlabel) cout << "warning: label outside range\n";
-                        else drow[j]=reflabel[labelrow[i]];
-                    };
-                    j++;
-                  }
-                  rowcnt++;
-                  cout << (row+1) << "/" << height <<"\r";
-                  if (rowcnt>=reduction_factor) {
-                    /*int w=pright-pleft;
-                    for (int i=0;i<w;i++) {
-                        rfile << std::to_string(drow[i]);
-                        if (i<w-1) rfile<<",";
-                    }
-                    rfile << endl;*/
-                    RowReduce(rfile,datarows,pright-pleft,reduction_factor,rowcnt);
-                    rowcnt=0;
-                  }
-                }
-
-            }
-            if (rowcnt) RowReduce(rfile,datarows,pright-pleft,reduction_factor,rowcnt);
-            cout << "total cells:   " << total_cells << endl;
-            rfile.close();
-            for (int i=0;i<reduction_factor;i++) delete []datarows[i];
-            delete []datarows;
-            delete []rowdata;
-            delete []labelrow;
-            fclose(clusterfile);
-        } else cout << "error: could not open: '" << str_ifile << "'\n";
-      } else cout << "error: could not open: '" << str_lfile << "'\n";
-
+    }
+    if (rowcnt) RowReduce(rfile,datarows,pright-pleft,reduction_factor,rowcnt);
+    cout << "total cells:   " << total_cells << endl;
+    rfile.close();
+    for (int i=0;i<reduction_factor;i++) delete []datarows[i];
+    delete []datarows;
+    delete []rowdata;
+    delete []labelrow;
+    fclose(clusterfile);
+  } else cout << "error: could not open: '" << str_ifile << "'\n";
 }
 
 void TestBitIO()
@@ -523,7 +548,7 @@ const std::string LISA_USAGE={
 "-s,--save     save results to .csv file, 1=small, 2=large\n"
 "-t,--test     test consistence of lisa\n"
 "-v,--verbose  verbosity level [0-2] (default: 1)\n"
-"-w,--write    write clusterlabel data, 1=labels+closs, 2=closs\n"
+"-w,--write    write clusterlabel data, 1=clusters+labels, 2=labels\n"
 "--info        info about raster file\n"
 "--input       inputfile\n"
 "--output      outputfile\n"
@@ -634,22 +659,14 @@ int main(int argc,char *argv[])
     }
 
     ComandLine myCmdLine;
-    if (cmode==ComandLine::ANALYZE)
-    {
-      myCmdLine.Analyze(str_ifile,str_bfile,AnalyzeOptions);
-    } else if (cmode==ComandLine::CONVERT || cmode==ComandLine::INFO)
-    {
-      myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);
-    } else if (cmode==ComandLine::TEST)
-    {
-      myCmdLine.TestConsistency();
-    } else if (cmode==ComandLine::MAP)
-    {
-      myCmdLine.Reduce(str_ifile,reduction_factor,myGeoExtend);
-    } else if (cmode==ComandLine::VERSION) {
-      PrintVersion(1);
+    switch (cmode) {
+      case ComandLine::ANALYZE:myCmdLine.Analyze(str_ifile,str_bfile,AnalyzeOptions);break;
+      case ComandLine::CONVERT:
+      case ComandLine::INFO:myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);break;
+      case ComandLine::TEST:myCmdLine.TestConsistency();break;
+      case ComandLine::MAP:myCmdLine.Map(str_ifile,reduction_factor,myGeoExtend);break;
+      case ComandLine::VERSION:PrintVersion(1);break;
+      default: cout << "unknown mode: " << cmode << endl;break;
     }
-
-    //m.Print();
     return 0;
 }

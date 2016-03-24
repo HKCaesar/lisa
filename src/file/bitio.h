@@ -99,12 +99,12 @@ class BitBuffer {
         bitcnt--;
         return (bitbuf>>bitcnt)&1;
       }
-      void PutBits(int val,int nbits) { // put nbits going from low to high
-        for (int k=0;k<nbits;k++) PutBit( (val>>k)&1);
+      void PutBits(int64_t val,int nbits) { // put nbits going from low to high
+        for (int k=0;k<nbits;k++) PutBit((val>>k)&1);
       }
-      int GetBits(int nbits) { // get nbits going from low to high
-        int val=0;
-        for (int k=0;k<nbits;k++) val|=(GetBit()<<k);
+      int64_t GetBits(int nbits) { // get nbits going from low to high
+        int64_t val=0;
+        for (int k=0;k<nbits;k++) val|=(int64_t)GetBit()<<k;
         return val;
       }
       static int EstimateK(int N,int A) { // doesn't handle overflows correctly
@@ -119,11 +119,21 @@ class BitBuffer {
          PutBit(0);
          if (q) PutBits(val&((1<<q)-1),q);
       }
-      int GetEliasGamma()
+      void PutEliasGamma(int64_t val)
       {
+         int64_t x=val;
          int q=0;
+         while (x>>=1) ++q;
+
+         for (int i=0;i<q;i++) PutBit(1);
+         PutBit(0);
+         if (q) PutBits(val&(((int64_t)1<<q)-1),q);
+      }
+      int64_t GetEliasGamma()
+      {
+         int64_t q=0;
          while (GetBit()) q++;
-         return (1<<q)+GetBits(q);
+         return ((int64_t)1<<q)+GetBits(q);
       }
       void PutRice(int val,int k) { // write varible length rice code with param k<32
          int q=val>>k;
