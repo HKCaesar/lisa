@@ -2,6 +2,7 @@
 #define ASC_H
 
 #include "img.h"
+#include "..\utils.h"
 
 // Functions for reading esri ASCII raster data
 

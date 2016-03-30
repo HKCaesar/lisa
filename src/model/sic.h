@@ -6,6 +6,13 @@
 
 // sic (simple image coder) v0.1
 
+// simple bitpack-compression for clusterfiles
+namespace RLEPack {
+      void EncodeLabel(BitBuffer &bitout,int64_t diff,int nrun);
+      int PackRow(int64_t *rowdata,uint32_t width,uint8_t *dstdata);
+      void UnpackRow(uint8_t *srcdata,uint32_t width,int64_t *dstdata);
+};
+
 class SIC {
   public:
     enum COMP_TYPE {COMP_NONE,COMP_BILEVEL,COMP_GRAY};
@@ -16,7 +23,6 @@ class SIC {
     int CompressRowGrey(uint8_t *linebuf,uint8_t *outbuf);
     int DecompressRowGrey(uint8_t *inbuf,uint8_t *linebuf);
   private:
-
     void EncodeVal(BitBuffer &bitbuf,int val,int pred);
     int DecodeVal(BitBuffer &bitbuf,int pred);
     int width;

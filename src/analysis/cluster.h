@@ -3,8 +3,7 @@
 
 #include "proj.h"
 #include "..\file\bm.h"
-#include "..\file\bri.h"
-#include "..\rle.h"
+#include "..\file\img.h"
 
 // implements connected component analyzation on .bri-files
 
@@ -58,11 +57,11 @@ class BRIOptions
   std::string str_labelfile,str_clusterfile1,str_clusterfile2,str_clusterflushfile;
 };
 
-class ClusterBRI
+class Cluster
 {
   public:
-    ClusterBRI(BRIOptions &opt);
-    ~ClusterBRI();
+    Cluster(BRIOptions &opt);
+    ~Cluster();
     void ClusterAnalyzation();
     void SaveFullClusterData(std::string &fname);
     void SaveSmallClusterData(std::string &fname);

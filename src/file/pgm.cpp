@@ -1,4 +1,5 @@
 #include "pgm.h"
+#include "..\utils.h"
 
 void IMGPGM::ReadPGMLine(std::string &line)
 {

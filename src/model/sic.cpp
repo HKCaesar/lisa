@@ -1,4 +1,59 @@
 #include "sic.h"
+#include "..\utils.h"
+
+namespace RLEPack {
+      void EncodeLabel(BitBuffer &bitout,int64_t diff,int nrun)
+      {
+        bitout.PutEliasGamma(std::abs(diff)+2);
+        bitout.PutBit(diff<0);
+        bitout.PutEliasGamma(nrun+1);
+      }
+      int PackRow(int64_t *rowdata,uint32_t width,uint8_t *dstdata)
+      {
+        BitBuffer bitout(dstdata);
+        int64_t lval=rowdata[0];
+        int64_t llabel=0;
+        int nrun=0;
+        for (uint32_t i=1;i<width;i++) {
+            int64_t val=rowdata[i];
+
+            if (val==lval) nrun++;
+            else {
+              if (lval>0) {EncodeLabel(bitout,lval-llabel,nrun);llabel=lval;}
+              else {bitout.PutEliasGamma(1);bitout.PutEliasGamma(nrun+1);}
+              lval=val;
+              nrun=0;
+            }
+        }
+        if (lval>0) {EncodeLabel(bitout,lval-llabel,nrun);llabel=lval;}
+        else {bitout.PutEliasGamma(1);bitout.PutEliasGamma(nrun+1);}
+        bitout.Flush();
+        return bitout.GetBytesProcessed();
+      }
+      void UnpackRow(uint8_t *srcdata,uint32_t width,int64_t *dstdata)
+      {
+        memset(dstdata,0,width*sizeof(int64_t));
+        BitBuffer bitin(srcdata);
+        int nrun;
+        uint32_t i=0;
+        int64_t llabel=0;
+        while (i<width) {
+          int64_t diff=bitin.GetEliasGamma();
+          if (diff>1) {
+             diff-=2;
+             bool sgn=bitin.GetBit();
+             nrun=bitin.GetEliasGamma();
+             if (sgn) diff=-diff;
+             int64_t label=diff+llabel;
+             if (i+nrun>=width) cout << "rlepack: warning read over eol\n";
+             else for (int k=0;k<nrun;k++) dstdata[i+k]=label;
+             llabel=label;
+          } else nrun=bitin.GetEliasGamma();
+          i+=nrun;
+        }
+      }
+};
+
 
 SIC::SIC(int img_width,COMP_TYPE compression_type)
 :width(img_width),comptype(compression_type)

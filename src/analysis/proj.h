@@ -2,6 +2,7 @@
 #define PROJ_H
 
 #include "..\global.h"
+#include "..\utils.h"
 
 // structure of an interpolation cell
 struct inter_cell

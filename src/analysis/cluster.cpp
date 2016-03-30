@@ -1,6 +1,7 @@
 #include "cluster.h"
+#include "..\model\sic.h"
 
-ClusterBRI::ClusterBRI(BRIOptions &Options)
+Cluster::Cluster(BRIOptions &Options)
 :opt(Options),bri_width(opt.myIMG.GetWidth())
 {
   //rowbuffer=new uint8_t[bri_width];
@@ -12,20 +13,20 @@ ClusterBRI::ClusterBRI(BRIOptions &Options)
   num_1pixel=0;
 }
 
-ClusterBRI::~ClusterBRI()
+Cluster::~Cluster()
 {
   //if (rowbuffer) delete []rowbuffer,rowbuffer=0;
   for (int i=0;i<bufrows;i++) {if (wrows[i]) delete []wrows[i],wrows[i]=0;};
   delete []wrows,wrows=0;
 }
 
-int64_t ClusterBRI::FindRoot(int64_t x)
+int64_t Cluster::FindRoot(int64_t x)
 {
   while (cdata[x]>0) x=cdata[x];
   return x;
 }
 
-int64_t ClusterBRI::FindCollapse(int64_t x)
+int64_t Cluster::FindCollapse(int64_t x)
 {
   int64_t y=FindRoot(x);
 
@@ -37,7 +38,7 @@ int64_t ClusterBRI::FindCollapse(int64_t x)
   return y;
 }
 
-int64_t ClusterBRI::GetNumRoots()
+int64_t Cluster::GetNumRoots()
 {
   int64_t num_roots=0;
   for (int64_t i=1;i<=max_cluster_label;i++)
@@ -46,7 +47,7 @@ int64_t ClusterBRI::GetNumRoots()
 }
 
 // calculate edge-effected area
-double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len,double edge_effect_dept)
+double Cluster::CalculateEdgeAreaDE(double area,double edge_len,double edge_effect_dept)
 {
   double edge_area=0.;
   if (edge_len*edge_effect_dept>4.*area) edge_area=area;
@@ -59,12 +60,12 @@ double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len,double edge_e
 }
 
 // calculate edge-effected area
-double ClusterBRI::CalculateEdgeAreaDE(double area,double edge_len)
+double Cluster::CalculateEdgeAreaDE(double area,double edge_len)
 {
   return CalculateEdgeAreaDE(area,edge_len,opt.analyze_opt.edge_dept);
 }
 
-double ClusterBRI::CalculateEdgeAreaCircle(double area)
+double Cluster::CalculateEdgeAreaCircle(double area)
 {
   double r=sqrt(area/M_PI);
   if (r < opt.analyze_opt.edge_dept) return area;
@@ -77,7 +78,7 @@ double ClusterBRI::CalculateEdgeAreaCircle(double area)
 
 // Calculate C-Loss for a forest fragment in Gt
 // input: biomass in t, area in m^2, edge_area in m^2
-double ClusterBRI::CalculateCLoss(double biomass,double area_m2,double edge_area)
+double Cluster::CalculateCLoss(double biomass,double area_m2,double edge_area)
 {
   double biomass_ha=(biomass*10000.)/area_m2; // [t/ha]
   double carbon_ha=0.5*biomass_ha;
@@ -85,7 +86,7 @@ double ClusterBRI::CalculateCLoss(double biomass,double area_m2,double edge_area
   return c_loss;
 }
 
-void ClusterBRI::AddClusterStats(int64_t parea,const tcelldata &cell)
+void Cluster::AddClusterStats(int64_t parea,const tcelldata &cell)
 {
    double areaha=cell.area/10000.;
    if (areaha>=opt.analyze_opt.min_fragment_size) {
@@ -106,7 +107,7 @@ void ClusterBRI::AddClusterStats(int64_t parea,const tcelldata &cell)
     }
 }
 
-void ClusterBRI::CalculateStats()
+void Cluster::CalculateStats()
 {
   myStats.Reset(); // in case CalculateStats is called a second time
   if (opt.analyze_opt.flush_clusters) { // read clusters from file
@@ -135,7 +136,7 @@ void ClusterBRI::CalculateStats()
   if (myStats.num_clusters)  myStats.mean_area=myStats.total_area/((double)myStats.num_clusters*10000.);
 }
 
-double ClusterBRI::CalculateBorder(inter_cell &icell,bool left,bool right,bool top,bool bottom,int &border_pixel)
+double Cluster::CalculateBorder(inter_cell &icell,bool left,bool right,bool top,bool bottom,int &border_pixel)
 {
   border_pixel=0;
   double border_len=0.;
@@ -146,7 +147,7 @@ double ClusterBRI::CalculateBorder(inter_cell &icell,bool left,bool right,bool t
   return border_len;
 }
 
-void ClusterBRI::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,bool &btop,bool &bbottom)
+void Cluster::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,bool &btop,bool &bbottom)
 {
   int j;
   const int pixel_len=opt.analyze_opt.pixel_len;
@@ -167,22 +168,20 @@ void ClusterBRI::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &brigh
 }
 
 // only for testing, should be obsolet
-void ClusterBRI::WriteMarkedRow(int64_t *clusterrow,uint32_t width,FILE *file)
+void Cluster::WriteMarkedRow(int64_t *clusterrow,uint32_t width,FILE *file)
 {
   memset(rowtmp,0,width*sizeof(int64_t));
-  int outsize=RLEPack2::PackRow(clusterrow,width,clusterrowdata);
-  RLEPack2::UnpackRow(clusterrowdata,width,rowtmp);
+  int outsize=RLEPack::PackRow(clusterrow,width,clusterrowdata);
+  RLEPack::UnpackRow(clusterrowdata,width,rowtmp);
   int nerr=0;
-  for (uint32_t i=0;i<width;i++) {
-    if (rowtmp[i]!=clusterrow[i]) {nerr++;cout << "<" << clusterrow[i] << " " << rowtmp[i] << ">";};
-  }
+  for (uint32_t i=0;i<width;i++) if (rowtmp[i]!=clusterrow[i]) nerr++;
   if (nerr) cout << nerr << " errors in decompression\n";
   //else cout << "decompression ok\n";
   uint8_t tbuf[4];Utils::Put32LH(tbuf,outsize);fwrite(tbuf,1,4,file);
   fwrite(clusterrowdata,1,outsize,file);
 }
 
-void ClusterBRI::ProcessRow(int row,int cur_row)
+void Cluster::ProcessRow(int row,int cur_row)
 {
   inter_cell icell=opt.Proj.GetCellDim(row);
   int64_t *currow=wrows[cur_row];
@@ -248,7 +247,7 @@ void ClusterBRI::ProcessRow(int row,int cur_row)
   if (opt.analyze_opt.write_mode==1)WriteMarkedRow(currow,bri_width,clusterfile1);
 }
 
-void ClusterBRI::PrintHist(std::vector <int64_t> &hist,std::string header)
+void Cluster::PrintHist(std::vector <int64_t> &hist,std::string header)
 {
   cout << header << endl;
   for (size_t i=0;i<hist.size();i++) {
@@ -257,7 +256,7 @@ void ClusterBRI::PrintHist(std::vector <int64_t> &hist,std::string header)
   }
 }
 
-void ClusterBRI::PrintHist(std::vector <double> &hist,std::string header,std::string unit)
+void Cluster::PrintHist(std::vector <double> &hist,std::string header,std::string unit)
 {
   cout << header << endl;
   for (size_t i=0;i<hist.size();i++) {
@@ -266,7 +265,7 @@ void ClusterBRI::PrintHist(std::vector <double> &hist,std::string header,std::st
   }
 }
 
-void ClusterBRI::WriteHist(ofstream &file,std::vector <int64_t> &hist,std::string header)
+void Cluster::WriteHist(ofstream &file,std::vector <int64_t> &hist,std::string header)
 {
   file << header << "\n";
   for (size_t i=0;i<hist.size();i++)  {
@@ -277,7 +276,7 @@ void ClusterBRI::WriteHist(ofstream &file,std::vector <int64_t> &hist,std::strin
 }
 
 
-void ClusterBRI::WriteHist(ofstream &file,std::vector <double> &hist,std::string header)
+void Cluster::WriteHist(ofstream &file,std::vector <double> &hist,std::string header)
 {
   file << header << "\n";
   for (size_t i=0;i<hist.size();i++)  {
@@ -287,7 +286,7 @@ void ClusterBRI::WriteHist(ofstream &file,std::vector <double> &hist,std::string
   file<<"\n";
 }
 
-void ClusterBRI::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss)
+void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss)
 {
     if (cell.area/10000.>opt.analyze_opt.min_fragment_size) {
         int dclass=floor(log10(cell.area/10000.));
@@ -309,7 +308,7 @@ void ClusterBRI::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&his
     }
 }
 
-void ClusterBRI::SaveSmallClusterData(std::string &fname)
+void Cluster::SaveSmallClusterData(std::string &fname)
 {
   // calculate histograms
   std::vector <int64_t>hist_area(10);
@@ -361,7 +360,7 @@ void ClusterBRI::SaveSmallClusterData(std::string &fname)
 }
 
 // save full clusters
-void ClusterBRI::SaveFullClusterData(std::string &fname)
+void Cluster::SaveFullClusterData(std::string &fname)
 {
   char stmp[256];
   /*std::stringstream sout;
@@ -388,13 +387,13 @@ void ClusterBRI::SaveFullClusterData(std::string &fname)
   else cout << "Unable to open file";
 }
 
-void ClusterBRI::PrintProgress(int y,int height)
+void Cluster::PrintProgress(int y,int height)
 {
   cout << y << "/" << height << "\r";
 }
 
 // calculate carbon-loss for a given cluster label [t/ha]
-double ClusterBRI::CalculateCLossPerHA(int64_t label)
+double Cluster::CalculateCLossPerHA(int64_t label)
 {
   double area_m2=clusterdata[label].area;
   double edge_area_de=CalculateEdgeAreaDE(area_m2,clusterdata[label].border);
@@ -404,7 +403,7 @@ double ClusterBRI::CalculateCLossPerHA(int64_t label)
 }
 
 //somehow overlaps with "savefullclusterdata"
-void ClusterBRI::WriteLabelFile()
+void Cluster::WriteLabelFile()
 {
   char stmp[256];
   ofstream labelfile(opt.str_labelfile);
@@ -417,7 +416,7 @@ void ClusterBRI::WriteLabelFile()
   labelfile.close();
 }
 
-void ClusterBRI::WriteClusterfile()
+void Cluster::WriteClusterfile()
 {
   clusterfile1=NULL;
   FILE *clusterfile2=NULL;
@@ -446,7 +445,7 @@ void ClusterBRI::WriteClusterfile()
        nread=fread(clusterrowdata,1,outsize,clusterfile1);
        if (nread!=outsize) cout << " error reading clusterfile1 at line: " << row << endl;
        else {
-         RLEPack2::UnpackRow(clusterrowdata,bri_width,labelrow);
+         RLEPack::UnpackRow(clusterrowdata,bri_width,labelrow);
          for (int i=0;i<bri_width;i++) {
           if (labelrow[i]) {
             int64_t root=FindRoot(labelrow[i]);
@@ -467,11 +466,11 @@ void ClusterBRI::WriteClusterfile()
   fclose(clusterfile1);
   fclose(clusterfile2);
   cout << "deleting '" << opt.str_clusterfile1 << "'\n";
-  //std::remove(opt.str_clusterfile1.c_str());
+  std::remove(opt.str_clusterfile1.c_str());
 }
 
 // check connected components for consistency
-void ClusterBRI::CheckClusters()
+void Cluster::CheckClusters()
 {
   cout << "checking clusters..." << endl;
 
@@ -485,7 +484,7 @@ void ClusterBRI::CheckClusters()
   else cout << "failed" << endl;
 }
 
-int ClusterBRI::UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len)
+int Cluster::UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len)
 {
   for (int i=0;i<len;i++) {
     uint8_t val=srcrow[i];
@@ -501,7 +500,7 @@ int ClusterBRI::UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len)
 
 // attempts to compress the cdata tree
 // unfortunately uses temporary twice as much memory, needs to be fixed
-void ClusterBRI::CompressTree(int cur_row)
+void Cluster::CompressTree(int cur_row)
 {
    std::vector <int64_t> cdata_new;
    std::vector <int64_t> root_map;
@@ -538,7 +537,7 @@ void ClusterBRI::CompressTree(int cur_row)
 
 
 // write all unused roots to cluster file
-void ClusterBRI::FlushClusters(int cur_row)
+void Cluster::FlushClusters(int cur_row)
 {
   std::vector <int64_t>root_used(cdata.size());
   std::vector <int64_t> cdata_new;
@@ -584,14 +583,14 @@ void ClusterBRI::FlushClusters(int cur_row)
   clusterdata=clusterdata_new;
 }
 
-void ClusterBRI::DeleteTempFiles()
+void Cluster::DeleteTempFiles()
 {
  if (opt.analyze_opt.flush_clusters && std::remove(opt.str_clusterflushfile.c_str())!=0)  {
     cout << "warning: could not delete '"  << opt.str_clusterflushfile << "'\n";
  }
 }
 
-void ClusterBRI::ClusterAnalyzation()
+void Cluster::ClusterAnalyzation()
 {
   if (opt.analyze_opt.write_mode==1) {
     cout << "writing pass1-clusterfile: '" << opt.str_clusterfile1 << "'" << endl;

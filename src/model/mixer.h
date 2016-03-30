@@ -3,6 +3,7 @@
 
 #include "model.h"
 #include "..\global.h"
+#include "..\utils.h"
 
 class Mix2Linear
 {

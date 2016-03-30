@@ -1,13 +1,14 @@
 #include "cmdoptions.h"
+#include "..\utils.h"
 
-void CmdOptions::getopt(std::string &val)
+void CmdOptions::getOpt(std::string &val)
 {
   if (optfound && optvalue.length()) {
     val=optvalue;
   };
 }
 
-void CmdOptions::getopt(int &val)
+void CmdOptions::getOpt(int &val)
 {
   if (optfound && optvalue.length()) {
      try {
@@ -17,7 +18,7 @@ void CmdOptions::getopt(int &val)
   };
 }
 
-void CmdOptions::getopt(double &val)
+void CmdOptions::getOpt(double &val)
 {
   if (optfound && optvalue.length()) {
      try {
@@ -27,7 +28,7 @@ void CmdOptions::getopt(double &val)
   };
 }
 
-void CmdOptions::getopt(std::vector <double>&dtokens)
+void CmdOptions::getOpt(std::vector <double>&dtokens)
 {
   std::vector <std::string> stokens;
   StringUtils::Tokenize(optvalue,stokens,",");
@@ -37,7 +38,7 @@ void CmdOptions::getopt(std::vector <double>&dtokens)
   }
 }
 
-bool CmdOptions::SearchOption(const std::string &sshort,const std::string &&sslong)
+bool CmdOptions::searchOption(const std::string &sshort,const std::string &&sslong)
 {
   std::string usshort=StringUtils::toupper(sshort);
   std::string usslong=StringUtils::toupper(sslong);
