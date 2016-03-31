@@ -2,15 +2,15 @@
 #include "..\utils.h"
 
 namespace RLEPack {
-      void EncodeLabel(BitBuffer &bitout,int64_t diff,int nrun)
+      void EncodeLabel(BitBufferSafe &bitout,int64_t diff,int nrun)
       {
         bitout.PutEliasGamma(std::abs(diff)+2);
         bitout.PutBit(diff<0);
         bitout.PutEliasGamma(nrun+1);
       }
-      int PackRow(int64_t *rowdata,uint32_t width,uint8_t *dstdata)
+      int PackRow(int64_t *rowdata,uint32_t width,vector <uint8_t> &dstdata)
       {
-        BitBuffer bitout(dstdata);
+        BitBufferSafe bitout(dstdata);
         int64_t lval=rowdata[0];
         int64_t llabel=0;
         int nrun=0;
@@ -30,10 +30,10 @@ namespace RLEPack {
         bitout.Flush();
         return bitout.GetBytesProcessed();
       }
-      void UnpackRow(uint8_t *srcdata,uint32_t width,int64_t *dstdata)
+      void UnpackRow(vector <uint8_t> &srcdata,uint32_t width,int64_t *dstdata)
       {
         memset(dstdata,0,width*sizeof(int64_t));
-        BitBuffer bitin(srcdata);
+        BitBufferSafe bitin(srcdata);
         int nrun;
         uint32_t i=0;
         int64_t llabel=0;
@@ -45,7 +45,7 @@ namespace RLEPack {
              nrun=bitin.GetEliasGamma();
              if (sgn) diff=-diff;
              int64_t label=diff+llabel;
-             if (i+nrun>=width) cout << "rlepack: warning read over eol\n";
+             if (i+nrun>width) cerr << "rlepack: attempt to write over eol\n";
              else for (int k=0;k<nrun;k++) dstdata[i+k]=label;
              llabel=label;
           } else nrun=bitin.GetEliasGamma();

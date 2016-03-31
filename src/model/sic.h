@@ -8,9 +8,9 @@
 
 // simple bitpack-compression for clusterfiles
 namespace RLEPack {
-      void EncodeLabel(BitBuffer &bitout,int64_t diff,int nrun);
-      int PackRow(int64_t *rowdata,uint32_t width,uint8_t *dstdata);
-      void UnpackRow(uint8_t *srcdata,uint32_t width,int64_t *dstdata);
+      void EncodeLabel(BitBufferSafe &bitout,int64_t diff,int nrun);
+      int PackRow(int64_t *rowdata,uint32_t width,vector <uint8_t> &dstdata);
+      void UnpackRow(vector <uint8_t> &srcdata,uint32_t width,int64_t *dstdata);
 };
 
 class SIC {
