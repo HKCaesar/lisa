@@ -10,34 +10,34 @@ class StrTok {
     }
     StrTok(std::string &str,const char *delim)
     {
-      firstToken(str,delim);
+      FirstToken(str,delim);
     }
     // requires the iternal string buffer to end on '\0'
-    void firstToken(std::string &str,const char *delim)
+    void FirstToken(std::string &str,const char *delim)
     {
-      m_delim=delim;
-      m_token=strtok(&str[0],delim);
+      delim_=delim;
+      token_=strtok(&str[0],delim_);
     }
-    void nextToken()
+    void NextToken()
     {
-      m_token=strtok(NULL,m_delim);
+      token_=strtok(NULL,delim_);
     }
-    bool valid(){return m_token!=NULL;};
-    double getDouble(){return atof(m_token);};
-    long long int getLongLong(){return strtoll(m_token,NULL,10);};
+    bool valid(){return token_!=NULL;};
+    double GetDouble(){return atof(token_);};
+    long long int GetLongLong(){return strtoll(token_,NULL,10);};
   private:
-    const char *m_delim;
-    char *m_token;
+    const char *delim_;
+    char *token_;
 };
 
-int Map::readLabels(const string &strfile)
+int Map::ReadLabels(const string &strfile)
 {
-  m_maxLabel=0;
-  m_labels.clear();
+  maxlabel_=0;
+  labels_.clear();
 
   ifstream ifile(strfile);
   if (ifile.is_open()) {
-    int64_t fileLength=Utils::GetStreamSize(ifile);
+    int64_t filelength=Utils::GetStreamSize(ifile);
     double total_area=0.;
     double total_edgelen=0.;
 
@@ -52,7 +52,7 @@ int Map::readLabels(const string &strfile)
     while ( getline (ifile,line) )
     {
       if ( (++cnt)==1<<16) {
-        cout << "reading labels: '" << strfile << "': " << Utils::ConvertFixed(ifile.tellg()*100.0/(double)fileLength,1) << "%\r";
+        cout << "reading labels: '" << strfile << "': " << Utils::ConvertFixed(ifile.tellg()*100.0/(double)filelength,1) << "%\r";
         cnt=0;
       }
 
@@ -69,27 +69,27 @@ int Map::readLabels(const string &strfile)
         }
       #else // twice as fast
         StrTok tok(line,delim);
-        labelentry.label=tok.getLongLong();
-        tok.nextToken(); // skip area in pixels
-        tok.nextToken();
-        labelentry.area=tok.getDouble();
-        tok.nextToken();
-        labelentry.edgeLen=tok.getDouble();
-        tok.nextToken();
-        labelentry.closs=tok.getDouble();
+        labelentry.label=tok.GetLongLong();
+        tok.NextToken(); // skip area in pixels
+        tok.NextToken();
+        labelentry.area=tok.GetDouble();
+        tok.NextToken();
+        labelentry.edgelen=tok.GetDouble();
+        tok.NextToken();
+        labelentry.closs=tok.GetDouble();
         if (!tok.valid()) cout << "map: unexpected number of tokens in file: '" << strfile << "'\n";
       #endif
 
       total_area+=labelentry.area;
-      total_edgelen+=labelentry.edgeLen;
-      if (labelentry.label>m_maxLabel) m_maxLabel=labelentry.label;
-      m_labels.push_back(labelentry);
+      total_edgelen+=labelentry.edgelen;
+      if (labelentry.label>maxlabel_) maxlabel_=labelentry.label;
+      labels_.push_back(labelentry);
     }
     ifile.clear();
-    cout << "reading labels: '" << strfile << "': " << Utils::ConvertFixed(ifile.tellg()*100.0/(double)fileLength,1) << "%\n";
+    cout << "reading labels: '" << strfile << "': " << Utils::ConvertFixed(ifile.tellg()*100.0/(double)filelength,1) << "%\n";
     ifile.close();
     myTimer.Stop();
-    cout << "number of labels: " << m_labels.size() << "\n";
+    cout << "number of labels: " << labels_.size() << "\n";
     cout << "total area:       " << Utils::ConvertFixed(Utils::SqMetre_To_MillHa(total_area),2) << " 10^6 ha" << endl;
     cout << "edge len:         " << Utils::ConvertFixed(Utils::Metre_To_MillKm(total_edgelen),2) << " 10^6 km" << endl;
     cout << "time elapsed:     " << myTimer.ElapsedS() << " seconds" << endl;
@@ -97,51 +97,49 @@ int Map::readLabels(const string &strfile)
   } else return 1;
 }
 
-void Map::transferLabels()
+void Map::TransferLabels()
 {
-  m_refLabels.resize(m_maxLabel+1);
-  for (size_t i=0,ilen=m_labels.size();i<ilen;i++) {
+  reflabels_.resize(maxlabel_+1);
+  for (size_t i=0,ilen=labels_.size();i<ilen;i++) {
     double val=0.;
-    if (m_mapType==0) val=m_labels[i].closs;
-    else if (m_mapType==1) {
-      double edge_area=Cluster::CalculateEdgeAreaDE(m_labels[i].area,m_labels[i].edgeLen,m_edgeEffectDept);
-      double core_area=m_labels[i].area-edge_area;
-      val=core_area/m_labels[i].area;
+    if (maptype_==0) val=labels_[i].closs;
+    else if (maptype_==1) {
+      double edge_area=Cluster::CalculateEdgeAreaDE(labels_[i].area,labels_[i].edgelen,edge_effect_dept_);
+      double core_area=labels_[i].area-edge_area;
+      val=core_area/labels_[i].area;
     }
-    m_refLabels[m_labels[i].label]=val;
+    reflabels_[labels_[i].label]=val;
   }
-  m_labels.clear();
+  labels_.clear();
 }
 
-void Map::allocMem()
+void Map::AllocMem()
 {
-  m_rowData=new uint8_t[m_maxRowDataSize];
-  m_labelRow=new int64_t[m_width];
-  m_dataRows=new double*[m_reductionFactor];
-  for (int i=0;i<m_reductionFactor;i++) m_dataRows[i]=new double[m_width];
+  labelrow_=new int64_t[width_];
+  datarows_=new double*[reduction_factor_];
+  for (int i=0;i<reduction_factor_;i++) datarows_[i]=new double[width_];
 }
 
-void Map::freeMem()
+void Map::FreeMem()
 {
-  for (int i=0;i<m_reductionFactor;i++) delete []m_dataRows[i];
-  delete []m_dataRows;
-  delete []m_rowData;
-  delete []m_labelRow;
+  for (int i=0;i<reduction_factor_;i++) delete []datarows_[i];
+  delete []datarows_;
+  delete []labelrow_;
 }
 
-void Map::skipRows(int nrows)
+void Map::SkipRows(int nrows)
 {
   uint8_t tbuf[4];
   for (int i=0;i<nrows;i++) {
-    size_t tread=fread(tbuf,1,4,m_clusterFile);
+    size_t tread=fread(tbuf,1,4,clusterfile_);
     uint32_t rowsize=Utils::Get32LH(tbuf);
-    fseek(m_clusterFile,rowsize,SEEK_CUR);
+    fseek(clusterfile_,rowsize,SEEK_CUR);
     if (i%1000==0) cout << "skipping " << nrows << " lines: " << Utils::ConvertFixed(i*100/(double)(nrows),1) << "%\r";
   }
   cout << endl;
 }
 
-double Map::blockAverage(double **rows,int width,int startx,int xblock,int yblock) const
+double Map::BlockAverage(double **rows,int width,int startx,int xblock,int yblock) const
 {
   double sum=0.0;
   int64_t k=0;
@@ -154,12 +152,12 @@ double Map::blockAverage(double **rows,int width,int startx,int xblock,int ybloc
   return sum/(double)k;
 }
 
-void Map::rowReduce(ofstream &stream,double **rows,int width,int xblock,int yblock)
+void Map::RowReduce(ofstream &stream,double **rows,int width,int xblock,int yblock)
 {
   int nblocks=ceil(width/(double)xblock);
   for (int block=0;block<nblocks;block++)
   {
-    double avg=blockAverage(rows,width,block*xblock,xblock,yblock);
+    double avg=BlockAverage(rows,width,block*xblock,xblock,yblock);
     stream << std::to_string(avg);
     if (block<nblocks-1) stream<<",";
   }
@@ -167,7 +165,7 @@ void Map::rowReduce(ofstream &stream,double **rows,int width,int xblock,int yblo
 }
 
 // transforms a value from the range 0..100 to nclasses in 0..255
-int Map::transformVal(double val,int nClasses)
+int Map::TransformVal(double val,int nClasses)
 {
   const double classWidth=256/(double)nClasses;
   const double outVal=(val*255.)/100.;
@@ -175,13 +173,13 @@ int Map::transformVal(double val,int nClasses)
   return iVal;
 }
 
-void Map::rowReduce(IMGPGM &PGMFile,double **rows,int width,int xblock,int yblock)
+void Map::RowReduce(IMGPGM &PGMFile,double **rows,int width,int xblock,int yblock)
 {
   int nblocks=ceil(width/(double)xblock);
   for (int block=0;block<nblocks;block++)
   {
-    double avg=blockAverage(rows,width,block*xblock,xblock,yblock);
-    int ival=transformVal(avg*100.,m_mapScale);
+    double avg=BlockAverage(rows,width,block*xblock,xblock,yblock);
+    int ival=TransformVal(avg*100.,mapscale_);
     if (ival<0 || ival>255) cout << "map: warning: ival is out of range\n";
 
     PGMFile.rowbuffer[block]=uint8_t(ival);
@@ -189,7 +187,7 @@ void Map::rowReduce(IMGPGM &PGMFile,double **rows,int width,int xblock,int ybloc
   PGMFile.WriteRow();
 }
 
-void Map::processRows(std::string stroutfile,int ptop,int pbottom,int pleft,int pright)
+void Map::ProcessRows(std::string stroutfile,int ptop,int pbottom,int pleft,int pright)
 {
   bool write_pgm=false;
 
@@ -199,8 +197,8 @@ void Map::processRows(std::string stroutfile,int ptop,int pbottom,int pleft,int 
 
   int pwidth=pright-pleft;
   int pheight=pbottom-ptop;
-  int rwidth=ceil(pwidth/(double)m_reductionFactor);
-  int rheight=ceil(pheight/(double)m_reductionFactor);
+  int rwidth=ceil(pwidth/(double)reduction_factor_);
+  int rheight=ceil(pheight/(double)reduction_factor_);
 
   IMGPGM myPGM;
   ofstream rfile;
@@ -221,41 +219,42 @@ void Map::processRows(std::string stroutfile,int ptop,int pbottom,int pleft,int 
   int outputrows=0;
 
   for (int row=ptop;row<pbottom;row++) {
-    size_t tread=fread(tbuf,1,4,m_clusterFile);
+    size_t tread=fread(tbuf,1,4,clusterfile_);
     uint32_t rowsize=Utils::Get32LH(tbuf);
-    if (rowsize>=m_maxRowDataSize) {
+    if (rowsize>=maxrowdatasize_) {
       cout << "map: rowsize >= maxrowdatasize, skipping line\n";
-      fseek(m_clusterFile,rowsize,SEEK_CUR);
+      fseek(clusterfile_,rowsize,SEEK_CUR);
     } else {
-      tread=fread(m_rowData,1,rowsize,m_clusterFile);
+      if (rowdata_.size()<rowsize) rowdata_.resize(rowsize);
+      tread=fread(&rowdata_[0],1,rowsize,clusterfile_);
       if (tread!=rowsize) cout << "warning: could not read\n";
       else {
-        RLEPack::UnpackRow(m_rowData,m_width,m_labelRow);
-        double *drow=m_dataRows[rowcnt];
+        RLEPack::UnpackRow(rowdata_,width_,labelrow_);
+        double *drow=datarows_[rowcnt];
         int j=0;
         for (int i=pleft;i<pright;i++) {
           drow[j]=0.;
-          if (m_labelRow[i]) {
+          if (labelrow_[i]) {
             total_cells++;
 
-            if (m_labelRow[i]>m_maxLabel) cout << "warning: label outside range\n";
-            else drow[j]=m_refLabels[m_labelRow[i]];
+            if (labelrow_[i]>maxlabel_) cout << "warning: label outside range\n";
+            else drow[j]=reflabels_[labelrow_[i]];
           };
           j++;
         }
       }
       rowcnt++;
-      if (rowcnt>=m_reductionFactor) {
-        cout << (row+1) << "/" << m_height <<"\r";
-        if (write_pgm) rowReduce(myPGM,m_dataRows,pwidth,m_reductionFactor,rowcnt);
-        else rowReduce(rfile,m_dataRows,pwidth,m_reductionFactor,rowcnt);
+      if (rowcnt>=reduction_factor_) {
+        cout << (row+1) << "/" << height_ <<"\r";
+        if (write_pgm) RowReduce(myPGM,datarows_,pwidth,reduction_factor_,rowcnt);
+        else RowReduce(rfile,datarows_,pwidth,reduction_factor_,rowcnt);
         rowcnt=0;outputrows++;
       }
     }
   }
   if (rowcnt) {
-    if (write_pgm) rowReduce(myPGM,m_dataRows,pwidth,m_reductionFactor,rowcnt);
-    else rowReduce(rfile,m_dataRows,pwidth,m_reductionFactor,rowcnt);
+    if (write_pgm) RowReduce(myPGM,datarows_,pwidth,reduction_factor_,rowcnt);
+    else RowReduce(rfile,datarows_,pwidth,reduction_factor_,rowcnt);
     outputrows++;
   };
   cout << "total cells:    " << total_cells << endl;
@@ -269,7 +268,7 @@ void Map::processRows(std::string stroutfile,int ptop,int pbottom,int pleft,int 
   }
 }
 
-void Map::calculateMap(const std::string &str_ifile,const std::string &str_ofile,const geoExtend &myExtend)
+void Map::CalculateMap(const std::string &str_ifile,const std::string &str_ofile,const geoExtend &myExtend)
 {
   std::string str_lfile,str_pfile,str_outfile;
   Utils::ReplaceExt(str_ifile,str_lfile,".lab",true);
@@ -280,47 +279,47 @@ void Map::calculateMap(const std::string &str_ifile,const std::string &str_ofile
   } else str_outfile=str_ofile;
 
   cout << "reading clusters from '" << str_ifile << "': ";
-  m_clusterFile=fopen(str_ifile.c_str(),"rb");
-  if (m_clusterFile!=NULL) {
+  clusterfile_=fopen(str_ifile.c_str(),"rb");
+  if (clusterfile_!=NULL) {
     uint8_t tbuf[8];
-    fread(tbuf,1,8,m_clusterFile);
+    fread(tbuf,1,8,clusterfile_);
 
-    m_width=Utils::Get32LH(tbuf);
-    m_height=Utils::Get32LH(tbuf+4);
-    m_maxRowDataSize=m_width*10;
-    cout << m_width << "x" << m_height << endl;
+    width_=Utils::Get32LH(tbuf);
+    height_=Utils::Get32LH(tbuf+4);
+    maxrowdatasize_=width_*10;
+    cout << width_ << "x" << height_ << endl;
 
-    Projection Proj(m_width,m_height);
+    Projection Proj(width_,height_);
     Proj.ReadCoordinateFile(str_pfile);
     Proj.CalculateCellSize();
 
     int pleft,pright,ptop,pbottom;
-    Frame::SetExtend(Proj.getLeft(),Proj.getTop(),Proj.getCellsize(),myExtend,m_width,m_height,pleft,ptop,pright,pbottom);
+    Frame::SetExtend(Proj.getLeft(),Proj.getTop(),Proj.getCellsize(),myExtend,width_,height_,pleft,ptop,pright,pbottom);
 
     cout << "map: writing to '" << str_outfile << "'\n";
     Timer myTimer;
     myTimer.Start();
-    allocMem();
-    cout << "map: reduction factor: 1:" << m_reductionFactor << ", array: " << (((int64_t)m_reductionFactor*(int64_t)m_width*sizeof(double))>>20) << " mb\n";
+    AllocMem();
+    cout << "map: reduction factor: 1:" << reduction_factor_ << ", array: " << (((int64_t)reduction_factor_*(int64_t)width_*sizeof(double))>>20) << " mb\n";
     cout << "map: processing window (" << ptop << "," << pleft << ")x(" << pbottom << "," << pright << ")\n";
-    cout << "map: scale " << m_mapScale << ", type ";
-    switch (m_mapType) {
+    cout << "map: scale " << mapscale_ << ", type ";
+    switch (maptype_) {
       case 0: cout << "closs";break;
       case 1: cout << "core/area";break;
       default:cout << "unknown";break;
     }
-    if (m_mapType==1) cout << ", edge effect dept " << m_edgeEffectDept << "m";
+    if (maptype_==1) cout << ", edge effect dept " << edge_effect_dept_ << "m";
     cout << endl;
 
-    readLabels(str_lfile);
-    transferLabels();
+    ReadLabels(str_lfile);
+    TransferLabels();
 
-    if (ptop) skipRows(ptop-1);
+    if (ptop) SkipRows(ptop-1);
 
-    processRows(str_outfile,ptop,pbottom,pleft,pright);
+    ProcessRows(str_outfile,ptop,pbottom,pleft,pright);
 
-    fclose(m_clusterFile);
-    freeMem();
+    fclose(clusterfile_);
+    FreeMem();
     myTimer.Stop();
     cout << "time elapsed:   " << myTimer.ElapsedS() << " seconds" << endl;
   } else cout << "error: could not open: '" << str_ifile << "'\n";

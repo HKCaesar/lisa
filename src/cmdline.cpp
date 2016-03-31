@@ -241,5 +241,5 @@ void ComandLine::TestConsistency()
 void ComandLine::CreateMap(const std::string &str_ifile,const std::string &str_ofile,int reduction_factor,int map_scale,int map_type,int edge_effect_dept,const geoExtend &myExtend)
 {
   Map myDensityMap(reduction_factor,map_type,map_scale,edge_effect_dept);
-  myDensityMap.calculateMap(str_ifile,str_ofile,myExtend);
+  myDensityMap.CalculateMap(str_ifile,str_ofile,myExtend);
 }

@@ -171,14 +171,17 @@ void Cluster::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,b
 void Cluster::WriteMarkedRow(int64_t *clusterrow,uint32_t width,FILE *file)
 {
   memset(rowtmp,0,width*sizeof(int64_t));
-  int outsize=RLEPack::PackRow(clusterrow,width,clusterrowdata);
-  RLEPack::UnpackRow(clusterrowdata,width,rowtmp);
+  uint32_t outsize=RLEPack::PackRow(clusterrow,width,clusterrowdata_);
+  if (outsize>maxrowdatasize_) cout << "cluster: outsize>maxrowdatasize\n";
+  RLEPack::UnpackRow(clusterrowdata_,width,rowtmp);
   int nerr=0;
-  for (uint32_t i=0;i<width;i++) if (rowtmp[i]!=clusterrow[i]) nerr++;
-  if (nerr) cout << nerr << " errors in decompression\n";
+  for (uint32_t i=0;i<width;i++) {
+      if (rowtmp[i]!=clusterrow[i]) {cout << "error at pos " << i << " " << rowtmp[i] << "!=" << clusterrow[i] << endl;nerr++;};
+  }
+  if (nerr) cout << "cluster: " << nerr << " errors in decompression ("<<outsize<<")\n";
   //else cout << "decompression ok\n";
   uint8_t tbuf[4];Utils::Put32LH(tbuf,outsize);fwrite(tbuf,1,4,file);
-  fwrite(clusterrowdata,1,outsize,file);
+  fwrite(&clusterrowdata_[0],1,outsize,file);
 }
 
 void Cluster::ProcessRow(int row,int cur_row)
@@ -191,8 +194,7 @@ void Cluster::ProcessRow(int row,int cur_row)
     {
       num_1pixel++;
 
-      int64_t pleft,ptop; // load the left & top pixels for the hoshen-kopelman algorithm
-      pleft=ptop=0;
+      int64_t pleft=0,ptop=0; // load the left & top pixels for the hoshen-kopelman algorithm
       if (i>0) pleft=currow[i-1];
       if (row>0) ptop=wrows[Utils::SMod((cur_row-1),bufrows)][i];
 
@@ -441,11 +443,13 @@ void Cluster::WriteClusterfile()
     uint32_t nread=fread(tbuf,1,4,clusterfile1);
     if (nread!=4) cout << " error reading clusterfile1 at line: " << row << endl;
     else {
-       uint32_t outsize=Utils::Get32LH(tbuf);
-       nread=fread(clusterrowdata,1,outsize,clusterfile1);
-       if (nread!=outsize) cout << " error reading clusterfile1 at line: " << row << endl;
+       uint32_t compsize=Utils::Get32LH(tbuf);
+       if (clusterrowdata_.size()<compsize) clusterrowdata_.resize(compsize);
+       nread=fread(&clusterrowdata_[0],1,compsize,clusterfile1);
+
+       if (nread!=compsize) cout << " error reading clusterfile1 at line: " << row << endl;
        else {
-         RLEPack::UnpackRow(clusterrowdata,bri_width,labelrow);
+         RLEPack::UnpackRow(clusterrowdata_,bri_width,labelrow);
          for (int i=0;i<bri_width;i++) {
           if (labelrow[i]) {
             int64_t root=FindRoot(labelrow[i]);
@@ -601,7 +605,7 @@ void Cluster::ClusterAnalyzation()
     }
     labelrow=new int64_t[bri_width];
     rowtmp=new int64_t[bri_width];
-    clusterrowdata=new uint8_t[bri_width*8];
+    maxrowdatasize_=bri_width*10;
   }
   if (opt.analyze_opt.flush_clusters) {
     ofs_clusterfile.open(opt.str_clusterflushfile,ios::binary|ios::out);
@@ -663,7 +667,6 @@ void Cluster::ClusterAnalyzation()
     WriteLabelFile();
 
     delete []labelrow;
-    delete []clusterrowdata;
     delete []rowtmp;
   } else if (opt.analyze_opt.write_mode==2) {
     WriteLabelFile();

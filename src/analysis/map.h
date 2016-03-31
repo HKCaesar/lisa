@@ -10,36 +10,36 @@ class Map {
   struct MapLabel {
     int64_t label;
     double area;
-    double edgeLen;
+    double edgelen;
     double closs;
   };
   public:
-    Map(int reductionFactor,int mapType,int mapScale,int edgeEffectDept)
-    :m_clusterFile(NULL),m_reductionFactor(reductionFactor),m_mapType(mapType),m_mapScale(mapScale),m_edgeEffectDept(edgeEffectDept)
+    Map(int reduction_factor,int maptype,int mapscale,int edge_effect_dept)
+    :clusterfile_(NULL),reduction_factor_(reduction_factor),maptype_(maptype),mapscale_(mapscale),edge_effect_dept_(edge_effect_dept)
     {
 
     }
-    void calculateMap(const std::string &str_ifile,const std::string &str_ofile,const geoExtend &myExtend);
-    static int transformVal(double val,int nclasses);
+    void CalculateMap(const std::string &str_ifile,const std::string &str_ofile,const geoExtend &myExtend);
+    static int TransformVal(double val,int nclasses);
   private:
-    void processRows(std::string stroutfile,int ptop,int pbottom,int pleft,int pright);
-    double blockAverage(double **rows,int width,int startx,int xblock,int yblock) const;
-    void rowReduce(std::ofstream &stream,double **rows,int width,int xblock,int yblock);
-    void rowReduce(IMGPGM &PGMFile,double **rows,int width,int xblock,int yblock);
-    int readLabels(const std::string &strfile); // read all labels into "labels"
-    void skipRows(int nrows);
-    void transferLabels();
-    void allocMem();
-    void freeMem();
-    int64_t m_maxLabel;
-    std::vector <MapLabel>m_labels;
-    std::vector<double>m_refLabels;
-    FILE *m_clusterFile;
-    int m_reductionFactor,m_mapType,m_mapScale,m_edgeEffectDept;
-    uint32_t m_width,m_height,m_maxRowDataSize;
-    uint8_t *m_rowData;
-    int64_t *m_labelRow;
-    double **m_dataRows;
+    void ProcessRows(std::string stroutfile,int ptop,int pbottom,int pleft,int pright);
+    double BlockAverage(double **rows,int width,int startx,int xblock,int yblock) const;
+    void RowReduce(std::ofstream &stream,double **rows,int width,int xblock,int yblock);
+    void RowReduce(IMGPGM &PGMFile,double **rows,int width,int xblock,int yblock);
+    int ReadLabels(const std::string &strfile); // read all labels into "labels"
+    void SkipRows(int nrows);
+    void TransferLabels();
+    void AllocMem();
+    void FreeMem();
+    int64_t maxlabel_;
+    std::vector <MapLabel>labels_;
+    std::vector<double>reflabels_;
+    FILE *clusterfile_;
+    int reduction_factor_,maptype_,mapscale_,edge_effect_dept_;
+    uint32_t width_,height_,maxrowdatasize_;
+    vector <uint8_t> rowdata_;
+    int64_t *labelrow_;
+    double **datarows_;
 };
 
 #endif // MAP_H

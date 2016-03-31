@@ -109,7 +109,8 @@ class Cluster
     FILE *clusterfile1;
     fstream ofs_clusterfile;
     int64_t *labelrow,*rowtmp,minlabel;
-    uint8_t *clusterrowdata;
+    vector <uint8_t> clusterrowdata_;
+    uint32_t maxrowdatasize_;
 };
 
 #endif // CLUSTER_H
