@@ -36,7 +36,7 @@ class Map {
     std::vector<double>reflabels_;
     FILE *clusterfile_;
     int reduction_factor_,maptype_,mapscale_,edge_effect_dept_;
-    uint32_t width_,height_,maxrowdatasize_;
+    uint32_t width_,height_;
     vector <uint8_t> rowdata_;
     int64_t *labelrow_;
     double **datarows_;

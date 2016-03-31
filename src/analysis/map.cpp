@@ -133,7 +133,7 @@ void Map::SkipRows(int nrows)
   for (int i=0;i<nrows;i++) {
     size_t tread=fread(tbuf,1,4,clusterfile_);
     uint32_t rowsize=Utils::Get32LH(tbuf);
-    fseek(clusterfile_,rowsize,SEEK_CUR);
+    fseeko64(clusterfile_,rowsize,SEEK_CUR);
     if (i%1000==0) cout << "skipping " << nrows << " lines: " << Utils::ConvertFixed(i*100/(double)(nrows),1) << "%\r";
   }
   cout << endl;
@@ -221,35 +221,30 @@ void Map::ProcessRows(std::string stroutfile,int ptop,int pbottom,int pleft,int 
   for (int row=ptop;row<pbottom;row++) {
     size_t tread=fread(tbuf,1,4,clusterfile_);
     uint32_t rowsize=Utils::Get32LH(tbuf);
-    if (rowsize>=maxrowdatasize_) {
-      cout << "map: rowsize >= maxrowdatasize, skipping line\n";
-      fseek(clusterfile_,rowsize,SEEK_CUR);
-    } else {
-      if (rowdata_.size()<rowsize) rowdata_.resize(rowsize);
-      tread=fread(&rowdata_[0],1,rowsize,clusterfile_);
-      if (tread!=rowsize) cout << "warning: could not read\n";
-      else {
-        RLEPack::UnpackRow(rowdata_,width_,labelrow_);
-        double *drow=datarows_[rowcnt];
-        int j=0;
-        for (int i=pleft;i<pright;i++) {
-          drow[j]=0.;
-          if (labelrow_[i]) {
-            total_cells++;
+    if (rowdata_.size()<rowsize) rowdata_.resize(rowsize);
+    tread=fread(&rowdata_[0],1,rowsize,clusterfile_);
+    if (tread!=rowsize) cout << "warning: could not read\n";
+    else {
+      RLEPack::UnpackRow(rowdata_,width_,labelrow_);
+      double *drow=datarows_[rowcnt];
+      int j=0;
+      for (int i=pleft;i<pright;i++) {
+        drow[j]=0.;
+        if (labelrow_[i]) {
+          total_cells++;
 
-            if (labelrow_[i]>maxlabel_) cout << "warning: label outside range\n";
-            else drow[j]=reflabels_[labelrow_[i]];
-          };
-          j++;
-        }
+          if (labelrow_[i]>maxlabel_) cout << "warning: label outside range\n";
+          else drow[j]=reflabels_[labelrow_[i]];
+        };
+        j++;
       }
-      rowcnt++;
-      if (rowcnt>=reduction_factor_) {
-        cout << (row+1) << "/" << height_ <<"\r";
-        if (write_pgm) RowReduce(myPGM,datarows_,pwidth,reduction_factor_,rowcnt);
-        else RowReduce(rfile,datarows_,pwidth,reduction_factor_,rowcnt);
-        rowcnt=0;outputrows++;
-      }
+    }
+    rowcnt++;
+    if (rowcnt>=reduction_factor_) {
+      cout << (row+1) << "/" << height_ <<"\r";
+      if (write_pgm) RowReduce(myPGM,datarows_,pwidth,reduction_factor_,rowcnt);
+      else RowReduce(rfile,datarows_,pwidth,reduction_factor_,rowcnt);
+      rowcnt=0;outputrows++;
     }
   }
   if (rowcnt) {
@@ -286,7 +281,6 @@ void Map::CalculateMap(const std::string &str_ifile,const std::string &str_ofile
 
     width_=Utils::Get32LH(tbuf);
     height_=Utils::Get32LH(tbuf+4);
-    maxrowdatasize_=width_*10;
     cout << width_ << "x" << height_ << endl;
 
     Projection Proj(width_,height_);
