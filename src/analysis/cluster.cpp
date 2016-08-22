@@ -103,6 +103,7 @@ void Cluster::AddClusterStats(int64_t parea,const tcelldata &cell)
 
       myStats.total_closs+=CalculateCLoss(cell.biomass,cell.area,edge_area_de);
       if (cell.area>myStats.max_area) myStats.max_area=cell.area;
+      if (cell.area<myStats.min_area) myStats.min_area=cell.area;
       myStats.num_clusters++;
     }
 }
@@ -162,7 +163,7 @@ void Cluster::DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,b
   if (row>=pixel_len) {
     for (j=1;j<=pixel_len;j++) {if (wrows[Utils::SMod(cur_row-j,bufrows)][i]!=0) {btop=false;break;}};
   }
-  if (row<endrow-pixel_len) {
+  if (row<num_rows-pixel_len) {
     for (j=1;j<=pixel_len;j++) {if (wrows[Utils::SMod(cur_row+j,bufrows)][i]!=0) {bbottom=false;break;}};
   }
 }
@@ -184,9 +185,9 @@ void Cluster::WriteMarkedRow(int64_t *clusterrow,uint32_t width,FILE *file)
   fwrite(&clusterrowdata_[0],1,outsize,file);
 }
 
-void Cluster::ProcessRow(int row,int cur_row)
+void Cluster::ProcessRow(int irow,int row_offset,int cur_row)
 {
-  inter_cell icell=opt.Proj.GetCellDim(row);
+  inter_cell icell=opt.Proj.GetCellDim(irow+row_offset);
   int64_t *currow=wrows[cur_row];
   for (int i=0;i<bri_width;i++)
   {
@@ -196,17 +197,17 @@ void Cluster::ProcessRow(int row,int cur_row)
 
       int64_t pleft=0,ptop=0; // load the left & top pixels for the hoshen-kopelman algorithm
       if (i>0) pleft=currow[i-1];
-      if (row>0) ptop=wrows[Utils::SMod((cur_row-1),bufrows)][i];
+      if (irow>0) ptop=wrows[Utils::SMod((cur_row-1),bufrows)][i];
 
       // detect borders
       bool bleft,bright,btop,bbottom;
-      DetectBorders(row,cur_row,i,bleft,bright,btop,bbottom);
+      DetectBorders(irow,cur_row,i,bleft,bright,btop,bbottom);
 
       int border_pixel;
       double border_len=CalculateBorder(icell,bleft,bright,btop,bbottom,border_pixel);
       max_border_pixel+=4;
 
-      double biomass_m2=opt.BMass.getBiomassRef(i,row);
+      double biomass_m2=opt.BMass.getBiomassRef(i,irow+row_offset);
 
       if (pleft==0 && ptop==0) // new label
       {
@@ -433,12 +434,12 @@ void Cluster::WriteClusterfile()
   }
   uint8_t tbuf[8];
   Utils::Put32LH(tbuf,bri_width);
-  Utils::Put32LH(tbuf+4,endrow);
+  Utils::Put32LH(tbuf+4,num_rows);
   fwrite(tbuf,1,8,clusterfile2);
 
   double total_biomass=0.0;
   int64_t total_cells=0;
-  for (row=0;row<endrow;row++)
+  for (int row=0;row<num_rows;row++)
   {
     uint32_t nread=fread(tbuf,1,4,clusterfile1);
     if (nread!=4) cout << " error reading clusterfile1 at line: " << row << endl;
@@ -462,7 +463,7 @@ void Cluster::WriteClusterfile()
          WriteMarkedRow(labelrow,bri_width,clusterfile2);
        }
     }
-    if (opt.analyze_opt.verbose && (row+1)%100==0) PrintProgress(row+1,endrow);
+    if (opt.analyze_opt.verbose && (row+1)%100==0) PrintProgress(row+1,num_rows);
   }
   cout << "total cells:   " << total_cells << endl;
   cout << "total biomass: " << total_biomass/1000000000.0 << endl;
@@ -585,6 +586,10 @@ void Cluster::FlushClusters(int cur_row)
   max_cluster_label=nroots;
   cdata=cdata_new;
   clusterdata=clusterdata_new;
+
+  root_used.resize(0);
+  cdata_new.resize(0);
+  clusterdata_new.resize(0);
 }
 
 void Cluster::DeleteTempFiles()
@@ -594,13 +599,21 @@ void Cluster::DeleteTempFiles()
  }
 }
 
-void Cluster::ClusterAnalyzation()
+void Cluster::ClusterAnalyzation(const geoExtend &myextend)
 {
+  int pleft,pright,ptop,pbottom;
+  Frame::SetExtend(opt.Proj.getLeft(),opt.Proj.getTop(),opt.Proj.getCellsize(),myextend,opt.myIMG.GetWidth(),opt.myIMG.GetHeight(),pleft,ptop,pright,pbottom);
+  std::cerr << "warning (fixme): ignoring left/right" << std::endl;
+  num_rows=pbottom-ptop;
+
+  //std::cout <<
+  //std::cout << myGeoExtend.top << " " << myGeoExtend.left << " " << myGeoExtend.right << " " << myGeoExtend.bottom << std::endl;
+
   if (opt.analyze_opt.write_mode==1) {
     cout << "writing pass1-clusterfile: '" << opt.str_clusterfile1 << "'" << endl;
     clusterfile1=Utils::OpenWriteFILE(opt.str_clusterfile1);
     if (clusterfile1==NULL) {
-      cout << "warning: could not create '" << opt.str_clusterfile1 << "'\n";
+      cerr << "warning: could not create '" << opt.str_clusterfile1 << "'\n";
       return;
     }
     labelrow=new int64_t[bri_width];
@@ -618,14 +631,22 @@ void Cluster::ClusterAnalyzation()
   cdata.resize(0);
   clusterdata.resize(0);
   opt.myIMG.StartReader();
-  if (opt.analyze_opt.nrows>0) endrow=opt.analyze_opt.nrows;
-  else endrow=opt.myIMG.GetHeight();
+
+  /*if (opt.analyze_opt.nrows>0) endrow=opt.analyze_opt.nrows;
+  else endrow=opt.myIMG.GetHeight();*/
 
   max_cluster_label=0;
   total_roots_written=0;
   cdata.push_back(max_cluster_label); // dummy label
   tcelldata tcell;tcell.area=tcell.border=0.;tcell.biomass=0.;
   clusterdata.push_back(tcell);
+
+  for (int i=0;i<ptop-1;i++) {
+    opt.myIMG.ReadRow();
+    if (i%10==0) cout << "skipping " << (ptop-1) << " lines: " << Utils::ConvertFixed(i*100/(double)(ptop-1),1) << "%\r";
+  }
+  std::cout << std::endl;
+  //cout << "skipping " << (ptop-1) << " lines: " << Utils::ConvertFixed(100,1) << "%\n";
 
   int lookahead=0;
   for (lookahead=0;lookahead<lookahead_rows;lookahead++) // buffer lookahead_rows
@@ -636,13 +657,13 @@ void Cluster::ClusterAnalyzation()
   int row_ptr=lookahead;
   int cur_ptr=0;
 
-  for (row=0;row<endrow;row++)
+  for (int row=0;row<num_rows;row++)
   {
-      if (row < endrow-lookahead_rows) { // read in the next row, process cur_row
+      if (row < num_rows-lookahead_rows) { // read in the next row, process cur_row
         opt.myIMG.ReadRow();
         UnpackRow(wrows[row_ptr],opt.myIMG.rowbuffer,bri_width);
       }
-      ProcessRow(row,cur_ptr);
+      ProcessRow(row,ptop,cur_ptr);
 
       //if (row%10000==0) CompressTree(cur_ptr);
       if (opt.analyze_opt.flush_clusters && (row+1)%100==0) FlushClusters(cur_ptr);
@@ -650,7 +671,7 @@ void Cluster::ClusterAnalyzation()
       cur_ptr=(cur_ptr+1)%bufrows;
       row_ptr=(row_ptr+1)%bufrows;
 
-      if (opt.analyze_opt.verbose && (row+1)%100==0) PrintProgress(row+1,endrow);
+      if (opt.analyze_opt.verbose && (row+1)%100==0) PrintProgress(row+1,num_rows);
   }
   if (opt.analyze_opt.flush_clusters) {
      FlushClusters(-1);
@@ -658,7 +679,7 @@ void Cluster::ClusterAnalyzation()
      cout << "flush_clusters: " << total_roots_written << " roots written\n";
   }
 
-  if (opt.analyze_opt.verbose) {PrintProgress(endrow,endrow);cout << endl;};
+  if (opt.analyze_opt.verbose) {PrintProgress(num_rows,num_rows);cout << endl;};
   opt.myIMG.StopReader();
 
   if (opt.analyze_opt.write_mode==1) {
@@ -689,6 +710,7 @@ void Cluster::ClusterAnalyzation()
   cout << "total area:          " << myStats.cell_area << " pixels = " << std::fixed << std::setprecision(2) << Utils::SqMetre_To_MillHa(myStats.total_area) << " 10^6 ha" << endl;
   cout << "mean area:           " << std::fixed << std::setprecision(4) << myStats.mean_area << " ha" << endl;
   cout << "max area:            " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.max_area) << " 10^6 ha" << endl;
+  cout << "min area:            " << std::fixed << std::setprecision(4) << (myStats.min_area/10000) << " ha" << endl;
   cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (pixel-len: " << opt.analyze_opt.pixel_len << ")" << endl;
   //cout << "max edge len:        " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm((double)max_border_pixel*sqrt(opt.Proj.GetMeanPixelArea())) << " 10^6 km" << endl;
   cout << "edge area (DE):      " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_de) << " 10^6 ha" << ", edge effect dept: " << std::fixed << std::setprecision(1) << opt.analyze_opt.edge_dept << " m" << endl;

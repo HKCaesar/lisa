@@ -28,11 +28,14 @@ class cluster_stats {
       cluster_stats(){Reset();}
   void Reset(){
     cell_area=num_clusters=num_clusters10ha=num_clusters50ha=0;
-    total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=max_area=0.0;
+    total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=0.0;
     total_biomass=total_closs=0.;
+
+    max_area=std::numeric_limits<double>::min();
+    min_area=std::numeric_limits<double>::max();
   };
   int64_t cell_area,num_clusters,num_clusters10ha,num_clusters50ha;
-  double total_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
+  double total_area,min_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
   double total_biomass,total_closs;
 };
 
@@ -400,6 +403,16 @@ static std::string SecToTime(double time)
         buff<<setprecision(decimals)<<fixed<<number;
         return buff.str();
       };
+static std::string Sec2Time(int s)
+{
+  int h=0,m=0;
+  while (s>=3600) {h+=1;s-=3600;};
+  while (s>=60) {m+=1;s-=60;};
+  std::ostringstream buff;
+  buff<<setfill('0') << setw(2) << h<<":"<<setfill('0') << setw(2)<<m<<":"<<setfill('0') << setw(2)<<s;
+  return buff.str();
+}
+
     static bool isFloat(double val)
     {
       return (val - (int)val > 0.0);
@@ -462,7 +475,6 @@ class Frame {
          /*if (!Utils::isFloat(extend.bottom)) pbottom=ptop+(int)extend.bottom;
          else pbottom=GeoUtils::getLatPos(extend.bottom,ref_top,cellsize);*/
 
-         cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
          double tleft=(ref_left+pleft*cellsize);
          double tright=(ref_left+pright*cellsize);
          double ttop=(ref_top-ptop*cellsize);
@@ -474,6 +486,7 @@ class Frame {
            ptop=0;pbottom=height;
          }
         }
+        std::cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
      }
 };
 

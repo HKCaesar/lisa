@@ -4,7 +4,7 @@
 #include "common/timer.h"
 #include "analysis/map.h"
 
-int ComandLine::OpenInputRaster(const std::string str_ifile)
+int ComandLine::OpenInputRaster(const std::string &str_ifile)
 {
   myIMG=nullptr;
 
@@ -37,7 +37,7 @@ int ComandLine::OpenInputRaster(const std::string str_ifile)
 }
 
 // connected component analysis of a supported raster file
-void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,AnalyzeOptions &AnalyzeOptions)
+void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,AnalyzeOptions &AnalyzeOptions,const geoExtend &myextend)
 {
   if (OpenInputRaster(str_ifile)==0) {
     if (myIMG!=nullptr) {
@@ -52,7 +52,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
         std::string str_pfile;
         Utils::ReplaceExt(str_ifile,str_pfile,".txt",true);
         if (myProj.ReadCoordinateFile(str_pfile)!=0) {
-          cout << "missing coordinate file: '" << str_pfile << "'!" << endl;
+          std::cerr << "missing coordinate file: '" << str_pfile << "'!" << endl;
           myIMG->Close();
           return;
         }
@@ -92,7 +92,15 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
         Utils::ReplaceExt(str_ifile,options.str_clusterflushfile,".clusters",true);
       }
       Cluster myCluster(options);
-      myCluster.ClusterAnalyzation();
+
+    /*Projection Proj(width_,height_);
+    Proj.ReadCoordinateFile(str_pfile);
+    Proj.CalculateCellSize();
+
+    int pleft,pright,ptop,pbottom;
+    Frame::SetExtend(Proj.getLeft(),Proj.getTop(),Proj.getCellsize(),myExtend,width_,height_,pleft,ptop,pright,pbottom);      */
+
+      myCluster.ClusterAnalyzation(myextend);
 
       if (AnalyzeOptions.check_consistency) myCluster.CheckClusters();
 
@@ -198,8 +206,9 @@ int ComandLine::TestConsistence(int dimx,int dimy,double p,int verbose)
       AnalyzeOptions analyze_opt;
       BRIOptions options(myBRI,myProj,myBiomass,analyze_opt);
 
+      geoExtend myextend;
       Cluster myCluster(options); // edge effect dept 100m
-      myCluster.ClusterAnalyzation();
+      myCluster.ClusterAnalyzation(myextend);
       cluster_stats &myStats=myCluster.GetClusterStats();
 
       ClusterLabel myLabel(t,30);
@@ -238,8 +247,20 @@ void ComandLine::TestConsistency()
   TestConsistence(SimpleRand::rU_Int(1,dim),SimpleRand::rU_Int(1,dim),1,0);
 }
 
-void ComandLine::CreateMap(const std::string &str_ifile,const std::string &str_ofile,int reduction_factor,int map_scale,int map_type,int edge_effect_dept,const geoExtend &myExtend)
+void ComandLine::Create(const std::string &str_ifile,const std::string &str_ofile,int reduction_factor,int map_type,int edge_effect_dept,const geoExtend &myExtend)
 {
-  Map myDensityMap(reduction_factor,map_type,map_scale,edge_effect_dept);
-  myDensityMap.CalculateMap(str_ifile,str_ofile,myExtend);
+  Map myDensityMap(reduction_factor,map_type,0,0,edge_effect_dept);
+  myDensityMap.Create(str_ifile,str_ofile,myExtend);
+}
+
+void ComandLine::Reduce(const std::string &str_ifile,const std::string &str_ofile,int reduction_factor)
+{
+  Map myDensityMap(reduction_factor,0,0,0,0);
+  myDensityMap.Reduce(str_ifile,str_ofile);
+}
+
+void ComandLine::Classify(const std::string &str_ifile,const std::string &str_maskfile,const std::string &str_ofile,int mapscale,int mapclass)
+{
+  Map myDensityMap(0,0,mapscale,mapclass,0);
+  myDensityMap.Classify(str_ifile,str_maskfile,str_ofile);
 }

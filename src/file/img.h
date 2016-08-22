@@ -24,9 +24,9 @@ class IMG {
     int GetWidth(){return width;};
     int GetHeight(){return height;};
     uint8_t *rowbuffer;
-    virtual ~IMG(){};
+    virtual ~IMG(){Close();};
     void Close(){
-      if (file!=nullptr) fclose(file);
+      if (file!=nullptr) {fclose(file);file=nullptr;};
     }
   protected:
 

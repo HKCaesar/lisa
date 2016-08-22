@@ -45,7 +45,7 @@ namespace RLEPack {
              nrun=bitin.GetEliasGamma();
              if (sgn) diff=-diff;
              int64_t label=diff+llabel;
-             if (i+nrun>width) cerr << "rlepack: attempt to write over eol\n";
+             if (i+nrun>width) cerr << "rlepack: attempt to read over eol\n";
              else for (int k=0;k<nrun;k++) dstdata[i+k]=label;
              llabel=label;
           } else nrun=bitin.GetEliasGamma();

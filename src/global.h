@@ -20,8 +20,6 @@ using namespace std;
 // enable to compile against libtiff
 #define TIFF_SUPPORT
 
-#define LISA_VERSION "Large Image Spatial Analysis v1.00b (c) 2014-2016 - Sebastian Lehmann"
-
 #define BOOL(x) (!(!(x)))
 
 #define BitSet(arg,posn) ((arg) | (1L << (posn)))

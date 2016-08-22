@@ -62,7 +62,7 @@ class Cluster
   public:
     Cluster(BRIOptions &opt);
     ~Cluster();
-    void ClusterAnalyzation();
+    void ClusterAnalyzation(const geoExtend &myextent);
     void SaveFullClusterData(std::string &fname);
     void SaveSmallClusterData(std::string &fname);
     void CheckClusters();
@@ -84,7 +84,7 @@ class Cluster
     void DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,bool &btop,bool &bbottom);
     double CalculateBorder(inter_cell &icell,bool left,bool right,bool top,bool bottom,int &border_pixel);
     void PrintProgress(int y,int height);
-    void ProcessRow(int row,int cur_row);
+    void ProcessRow(int row,int row_offset,int cur_row);
     void CalculateStats();
     void PrintHist(std::vector <int64_t> &hist,std::string header);
     void PrintHist(std::vector <double> &hist,std::string header,std::string unit);
@@ -103,9 +103,9 @@ class Cluster
     std::vector <int64_t> cdata;
     std::vector <tcelldata> clusterdata;
     int64_t max_cluster_label,total_roots_written,num_1pixel;
-    int row;
+    //int row;
     int64_t max_border_pixel;
-    int lookahead_rows,bufrows,endrow;
+    int lookahead_rows,bufrows,num_rows;
     FILE *clusterfile1;
     fstream ofs_clusterfile;
     int64_t *labelrow,*rowtmp,minlabel;
