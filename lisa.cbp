@@ -11,43 +11,67 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="--test" />
+				<Option parameters="--map --input h:\Hansen2000\Hansen2000.bin --map-reduction 250 --output h:\Hansen2000\Hansen2000.dat --map-type 1 " />
 				<Compiler>
 					<Add option="-g" />
+					<Add directory="../../msys64/mingw64/include" />
 				</Compiler>
+				<Linker>
+					<Add library="libtiff" />
+					<Add directory="../../msys64/mingw64/lib" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/lisa" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-a256 --check --input e:\cluster_analysis\hansen\america_2000.bri" />
+				<Option parameters="--analyze --input c:\data\hansen2000\Hansen_FC2000_UINT8_LZW_world.tif --threshold 50 --shape-file c:\data\wwf\olsenmap.txt --nrows 1000" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add directory="../../msys64/mingw64/include" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-static" />
+					<Add library="libtiff" />
+					<Add library="libjpeg" />
+					<Add library="libz" />
+					<Add library="liblzma" />
+					<Add directory="../../msys64/mingw64/lib" />
 				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
-			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="src/analysis/cluster.cpp" />
 		<Unit filename="src/analysis/cluster.h" />
+		<Unit filename="src/analysis/map.cpp" />
+		<Unit filename="src/analysis/map.h" />
 		<Unit filename="src/analysis/proj.cpp" />
 		<Unit filename="src/analysis/proj.h" />
-		<Unit filename="src/bmatrix.h" />
+		<Unit filename="src/cmdline.cpp" />
+		<Unit filename="src/cmdline.h" />
+		<Unit filename="src/common/bmatrix.h" />
+		<Unit filename="src/common/cmdoptions.cpp" />
+		<Unit filename="src/common/cmdoptions.h" />
+		<Unit filename="src/common/rand.h" />
+		<Unit filename="src/common/timer.h" />
 		<Unit filename="src/file/asc.cpp" />
 		<Unit filename="src/file/asc.h" />
+		<Unit filename="src/file/bitio.h" />
 		<Unit filename="src/file/bm.cpp" />
 		<Unit filename="src/file/bm.h" />
 		<Unit filename="src/file/bri.cpp" />
 		<Unit filename="src/file/bri.h" />
-		<Unit filename="src/file/imgfile.h" />
+		<Unit filename="src/file/img.h" />
 		<Unit filename="src/file/pgm.cpp" />
 		<Unit filename="src/file/pgm.h" />
+		<Unit filename="src/file/shape.cpp" />
+		<Unit filename="src/file/shape.h" />
+		<Unit filename="src/file/tiff.cpp" />
+		<Unit filename="src/file/tiff.h" />
 		<Unit filename="src/global.h" />
 		<Unit filename="src/main.cpp" />
 		<Unit filename="src/model/cm.cpp" />
@@ -57,8 +81,9 @@
 		<Unit filename="src/model/model.h" />
 		<Unit filename="src/model/rangecoder.cpp" />
 		<Unit filename="src/model/rangecoder.h" />
-		<Unit filename="src/rand.h" />
-		<Unit filename="src/rle.h" />
+		<Unit filename="src/model/sic.cpp" />
+		<Unit filename="src/model/sic.h" />
+		<Unit filename="src/utils.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

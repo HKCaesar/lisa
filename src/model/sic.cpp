@@ -58,7 +58,7 @@ namespace RLEPack {
 SIC::SIC(int img_width,COMP_TYPE compression_type)
 :width(img_width),comptype(compression_type)
 {
-  cout << "sic: " << width << ", " << comptype << endl;
+  //cout << "sic: " << width << ", " << comptype << endl;
   tbuf=new uint8_t[10*width];
 }
 

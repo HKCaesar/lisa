@@ -3,7 +3,7 @@
 #include "cmdline.h"
 #include "analysis/map.h"
 
-#define LISA_VERSION "Large Image Spatial Analysis v1.12 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v1.4.1 (c) 2014-2016 - Sebastian Lehmann"
 
 void PrintVersion(int mode=0)
 {
@@ -34,11 +34,14 @@ const std::string LISA_USAGE={
 "  -w,--write      write clusterlabel data (bin/lab), 1=clusters+labels, 2=labels\n"
 "  -b              mean biomass\n"
 "  --nrows         number of rows to process\n"
-"  --agb-file      saatchi agb biomass file [t/ha]\n"
+"  --agb-file      agb biomass file [t/ha]\n"
 "  --bthres        biomass threshold [t/ha] (default: 0 t/ha)\n"
+"  --raster-file   intersection file for analyzation\n"
+"  --raster-mask   integer vector of intersection mask\n"
 "  --check         check consistency of component analysis\n"
 "  --rloss         relative carbon loss in edge areas, default: 0.5\n"
 "  --flush         flush clusters to use fixed amount of memory\n"
+"  --surfacearea   calculate total surface area (slow)\n"
 "-c,--convert      convert raster file into [bri] file (g=globcover)\n"
 "-m,--map          produce a density map, out of bin/lab file\n"
 "  --map-scale     number of output classes 1...256\n"
@@ -74,7 +77,9 @@ int main(int argc,char *argv[])
     int map_class=0;
     bool force_overwrite=false;
     std::string str_ifile,str_ofile;
-    std::string str_bfile,str_maskfile;
+    std::string str_bmfile,str_maskfile;
+    std::string str_shapefile;
+    std::vector<int>shape_mask;
     geoExtend myGeoExtend;
 
     if (argc < 2) {
@@ -104,6 +109,7 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("","--classify")) cmode=ComandLine::CLASSIFY;
     if (myCmdOpt.searchOption("","--version")) cmode=ComandLine::VERSION;
     if (myCmdOpt.searchOption("","--force")) force_overwrite=true;
+    if (myCmdOpt.searchOption("","--surfacearea")) AnalyzeOptions.calc_surface_area=true;
     if (myCmdOpt.searchOption("-v","--verbose")) myCmdOpt.getOpt(verbosity_level);
     if (myCmdOpt.searchOption("-d","--dept")) {myCmdOpt.getOpt(AnalyzeOptions.edge_dept);};
     if (myCmdOpt.searchOption("","--threshold")) {myCmdOpt.getOpt(AnalyzeOptions.forest_cover_threshold);};
@@ -117,7 +123,9 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("-p","--pixel")) myCmdOpt.getOpt(AnalyzeOptions.pixel_len);
     if (myCmdOpt.searchOption("-i","--input")) myCmdOpt.getOpt(str_ifile);
     if (myCmdOpt.searchOption("-o","--output")) myCmdOpt.getOpt(str_ofile);
-    if (myCmdOpt.searchOption("","--agb-file")) myCmdOpt.getOpt(str_bfile);
+    if (myCmdOpt.searchOption("","--agb-file")) myCmdOpt.getOpt(str_bmfile);
+    if (myCmdOpt.searchOption("","--raster-file")) myCmdOpt.getOpt(str_shapefile);
+    if (myCmdOpt.searchOption("","--raster-mask")) myCmdOpt.getOpt(shape_mask);
     if (myCmdOpt.searchOption("","--map-scale")) {myCmdOpt.getOpt(map_scale);map_scale=std::max(std::min(map_scale,256),1);};
     if (myCmdOpt.searchOption("","--map-type")) myCmdOpt.getOpt(map_type);
     if (myCmdOpt.searchOption("","--map-class")) myCmdOpt.getOpt(map_class);
@@ -139,11 +147,14 @@ int main(int argc,char *argv[])
        cout << "extend:        " << myGeoExtend.top<<","<<myGeoExtend.left<<","<<myGeoExtend.right<<","<<myGeoExtend.bottom<<endl;
        cout << "infile:        '" << str_ifile << "'" << endl;
        cout << "outfile:       '" << str_ofile << "'" << endl;
-       cout << "agb-file:      '" << str_bfile << "'" << endl;
+       cout << "agb-file:      '" << str_bmfile << "'" << endl;
+       cout << "surface-area:  " << AnalyzeOptions.calc_surface_area << std::endl;
+       cout << "raster-file:   '" << str_shapefile << "'" << endl;
+       cout << "raster-mask:   [";for (auto x:shape_mask) std::cout << x << " ";std::cout << "]" << std::endl;
     }
     ComandLine myCmdLine;
     switch (cmode) {
-      case ComandLine::ANALYZE:myCmdLine.Analyze(str_ifile,str_bfile,AnalyzeOptions,myGeoExtend);break;
+      case ComandLine::ANALYZE:myCmdLine.Analyze(str_ifile,str_bmfile,str_shapefile,shape_mask,AnalyzeOptions,myGeoExtend);break;
       case ComandLine::CONVERT:
       case ComandLine::INFO:myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);break;
       case ComandLine::TEST:myCmdLine.TestConsistency();break;

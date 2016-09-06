@@ -3,6 +3,7 @@
 #include "common/bmatrix.h"
 #include "common/timer.h"
 #include "analysis/map.h"
+#include "file/shape.h"
 
 int ComandLine::OpenInputRaster(const std::string &str_ifile)
 {
@@ -37,7 +38,7 @@ int ComandLine::OpenInputRaster(const std::string &str_ifile)
 }
 
 // connected component analysis of a supported raster file
-void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,AnalyzeOptions &AnalyzeOptions,const geoExtend &myextend)
+void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,const std::string &shapefile,const std::vector<int>shape_mask,AnalyzeOptions &AnalyzeOptions,const geoExtend &myextend)
 {
   if (OpenInputRaster(str_ifile)==0) {
     if (myIMG!=nullptr) {
@@ -68,12 +69,11 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
 
       // read biomass file
       BM myBiomass(AnalyzeOptions.mean_biomass);
-
       if (str_bfile.length()) {
         Timer myTimer;
         myTimer.Start();
         if (!myBiomass.ReadAGBFile(str_bfile,AnalyzeOptions.bthres)) {
-          cerr << "  warning: could not open file: '" << str_bfile << "'\n";
+          cerr << "  error: could not open file: '" << str_bfile << "'\n";
           return;
         }
         myTimer.Stop();
@@ -81,7 +81,15 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
         myBiomass.SetGeoRef(myProj.getLeft(),myProj.getTop(),myProj.getCellsize()); // setup geo-reference for Biomass-Card
       };
 
-      BRIOptions options(*myIMG,myProj,myBiomass,AnalyzeOptions);
+      ShapeFile myShapeFile(shape_mask);
+      if (shapefile.length()) {
+        if (!myShapeFile.ReadShapeFile(shapefile)) {
+          std::cerr << "  error: could not open file: '" << shapefile << "'\n";
+          return;
+        }
+        myShapeFile.SetGeoRef(myProj.getLeft(),myProj.getTop(),myProj.getCellsize()); // setup geo-reference for Shapemask
+      }
+      BRIOptions options(*myIMG,myProj,myBiomass,myShapeFile,AnalyzeOptions);
 
       if (AnalyzeOptions.write_mode>0) {
         Utils::ReplaceExt(str_ifile,options.str_clusterfile1,".tmp",true);
@@ -199,12 +207,14 @@ int ComandLine::TestConsistence(int dimx,int dimy,double p,int verbose)
       myBRI.SeekStart();
 
       BM myBiomass(0);
+      std::vector <int>vec_classes;
+      ShapeFile myShapeFile(vec_classes);
 
       Projection myProj(myBRI.GetWidth(),myBRI.GetHeight());
       myProj.SetDummyInterpolation(30); // set a dummy interpolation of 30m
 
       AnalyzeOptions analyze_opt;
-      BRIOptions options(myBRI,myProj,myBiomass,analyze_opt);
+      BRIOptions options(myBRI,myProj,myBiomass,myShapeFile,analyze_opt);
 
       geoExtend myextend;
       Cluster myCluster(options); // edge effect dept 100m

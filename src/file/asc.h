@@ -65,14 +65,14 @@ class IMGASC : public IMG
     double top,left,right,bottom,cellsize;
     std::string line;
     int linenum;
+    bool nodata_avail;
+    int nodata_value;
   private:
     std::vector <int>vecline;
     int getLongPos(double ref_pos,double left);
     int getLatPos(double ref_pos,double top);
 
     double ttop,tleft,tright,tbottom;
-    bool nodata_avail;
-    int nodata_value;
     int pleft,pright,ptop,pbottom;
     int64_t hist[2];
 };

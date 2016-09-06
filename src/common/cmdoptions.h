@@ -11,6 +11,7 @@ class CmdOptions {
     void getOpt(int &val);
     void getOpt(double &val);
     void getOpt(std::vector <double>&dtokens);
+    void getOpt(std::vector <int>&itokens);
 private:
     int argc;
     char **argv;

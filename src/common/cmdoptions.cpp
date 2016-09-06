@@ -38,6 +38,16 @@ void CmdOptions::getOpt(std::vector <double>&dtokens)
   }
 }
 
+void CmdOptions::getOpt(std::vector <int>&itokens)
+{
+  std::vector <std::string> stokens;
+  StringUtils::Tokenize(optvalue,stokens,",");
+  for (size_t i=0;i<stokens.size();i++) {
+      int val=std::stol(stokens[i]);
+      itokens.push_back(val);
+  }
+}
+
 bool CmdOptions::searchOption(const std::string &sshort,const std::string &&sslong)
 {
   std::string usshort=StringUtils::toupper(sshort);

@@ -3,6 +3,54 @@
 
 #include "global.h"
 
+class RunStat {
+  public:
+    RunStat():m_n(0) {}
+    void Clear()
+    {
+      m_n = 0;
+    }
+
+    void Push(double x)
+    {
+      m_n++;
+            // See Knuth TAOCP vol 2, 3rd edition, page 232
+      if (m_n == 1) {
+        m_oldM = m_newM = x;
+        m_oldS = 0.0;
+      } else {
+        m_newM = m_oldM + (x - m_oldM)/m_n;
+        m_newS = m_oldS + (x - m_oldM)*(x - m_newM);
+
+                // set up for next iteration
+        m_oldM = m_newM;
+        m_oldS = m_newS;
+      }
+    }
+
+    int NumDataValues() const
+    {
+      return m_n;
+    }
+
+    double Mean() const
+    {
+      return (m_n > 0) ? m_newM : 0.0;
+    }
+
+    double Variance() const
+    {
+      return ( (m_n > 1) ? m_newS/(m_n - 1) : 0.0 );
+    }
+    double StandardDeviation() const
+    {
+      return sqrt( Variance() );
+    }
+    private:
+      int m_n;
+      double m_oldM, m_newM, m_oldS, m_newS;
+};
+
 template<class T>
 typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
     almost_equal(T x, T y, int ulp)
@@ -23,21 +71,6 @@ class geoExtend {
     double top,left,right,bottom;
 };
 
-class cluster_stats {
-  public:
-      cluster_stats(){Reset();}
-  void Reset(){
-    cell_area=num_clusters=num_clusters10ha=num_clusters50ha=0;
-    total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=0.0;
-    total_biomass=total_closs=0.;
-
-    max_area=std::numeric_limits<double>::min();
-    min_area=std::numeric_limits<double>::max();
-  };
-  int64_t cell_area,num_clusters,num_clusters10ha,num_clusters50ha;
-  double total_area,min_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
-  double total_biomass,total_closs;
-};
 
 class GeoUtils {
   public:
@@ -456,7 +489,7 @@ static bool isDouble( string myString ) {
 
 class Frame {
   public:
-     static void SetExtend(double ref_left,double ref_top,double cellsize,const geoExtend &extend,int width,int height,int &pleft,int &ptop,int &pright,int &pbottom)
+     static bool SetExtend(double ref_left,double ref_top,double cellsize,const geoExtend &extend,int width,int height,int &pleft,int &ptop,int &pright,int &pbottom)
      {
         pleft=0;pright=width;
         ptop=0;pbottom=height;
@@ -485,9 +518,10 @@ class Frame {
            pleft=0;pright=width;
            ptop=0;pbottom=height;
          }
-        }
-        std::cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
-     }
+          std::cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
+          return true;
+        } else return false;
+     };
 };
 
 

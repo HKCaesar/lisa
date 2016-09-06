@@ -3,9 +3,35 @@
 
 #include "proj.h"
 #include "..\file\bm.h"
+#include "..\file\shape.h"
 #include "..\file\img.h"
 
 // implements connected component analyzation on .bri-files
+
+class cluster_stats {
+  public:
+      cluster_stats()
+      :fragment_state_total(4),fragment_state_area(4)
+      {
+        Reset();
+      }
+  void Reset(){
+    cell_area=num_clusters=num_clusters10ha=num_clusters50ha=0;
+    surface_area=total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=0.0;
+    total_biomass=total_closs=0.;
+
+    std::fill(begin(fragment_state_total),end(fragment_state_total),0);
+    std::fill(begin(fragment_state_area),end(fragment_state_area),0.0);
+
+    max_area=std::numeric_limits<double>::min();
+    min_area=std::numeric_limits<double>::max();
+  };
+  int64_t cell_area,num_clusters,num_clusters10ha,num_clusters50ha;
+  double total_area,min_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
+  double total_biomass,total_closs,surface_area;
+  vector <int64_t>fragment_state_total;
+  vector <double>fragment_state_area;
+};
 
 class AnalyzeOptions {
   public:
@@ -29,11 +55,12 @@ class AnalyzeOptions {
     check_consistency=false;
     flush_clusters=false;
     verbose=true;
+    calc_surface_area=false;
   }
   double mean_biomass,bthres,relative_carbon_loss;
   int edge_dept,min_fragment_size,pixel_len,write_mode,save_mode;
   int forest_cover_threshold,nrows;
-  bool check_consistency,flush_clusters,verbose;
+  bool check_consistency,flush_clusters,verbose,calc_surface_area;
 };
 
 struct tcelldata
@@ -45,13 +72,14 @@ struct tcelldata
 class BRIOptions
 {
  public:
-  BRIOptions(IMG &IMGFile,Projection &myProj,BM &myBiomass,AnalyzeOptions &analyze_options)
-  :myIMG(IMGFile),Proj(myProj),BMass(myBiomass),analyze_opt(analyze_options)
+  BRIOptions(IMG &IMGFile,Projection &myProj,BM &myBiomass,ShapeFile &myShapeFile,AnalyzeOptions &analyze_options)
+  :myIMG(IMGFile),Proj(myProj),BMass(myBiomass),SF(myShapeFile),analyze_opt(analyze_options)
   {
   };
   IMG &myIMG;
   Projection &Proj;
   BM &BMass;
+  ShapeFile &SF;
   AnalyzeOptions analyze_opt;
 
   std::string str_labelfile,str_clusterfile1,str_clusterfile2,str_clusterflushfile;
@@ -81,10 +109,10 @@ class Cluster
     void WriteLabelFile();
     void WriteClusterfile();
     void WriteMarkedRow(int64_t *clusterow,uint32_t width,FILE *file);
-    void DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,bool &btop,bool &bbottom);
-    double CalculateBorder(inter_cell &icell,bool left,bool right,bool top,bool bottom,int &border_pixel);
+    void DetectBorders(int row,int cur_row,int i);
+    void CalculateBorder(inter_cell &icell,double &border_len);
     void PrintProgress(int y,int height);
-    void ProcessRow(int row,int row_offset,int cur_row);
+    void ProcessRow(int row,int row_offset,int cur_row,int mask_ptr);
     void CalculateStats();
     void PrintHist(std::vector <int64_t> &hist,std::string header);
     void PrintHist(std::vector <double> &hist,std::string header,std::string unit);
@@ -100,6 +128,7 @@ class Cluster
     int bri_width;
     //uint8_t *rowbuffer;
     int64_t **wrows; // prev, cur, next
+    std::vector<std::vector<char>> mask_rows;
     std::vector <int64_t> cdata;
     std::vector <tcelldata> clusterdata;
     int64_t max_cluster_label,total_roots_written,num_1pixel;
@@ -111,6 +140,7 @@ class Cluster
     int64_t *labelrow,*rowtmp,minlabel;
     vector <uint8_t> clusterrowdata_;
     uint32_t maxrowdatasize_;
+    std::vector <bool>vborder;
 };
 
 #endif // CLUSTER_H
