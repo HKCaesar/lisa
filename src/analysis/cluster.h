@@ -50,7 +50,6 @@ class AnalyzeOptions {
     save_mode=0;
 
     forest_cover_threshold=0;
-    nrows=0;
 
     check_consistency=false;
     flush_clusters=false;
@@ -59,7 +58,7 @@ class AnalyzeOptions {
   }
   double mean_biomass,bthres,relative_carbon_loss;
   int edge_dept,min_fragment_size,pixel_len,write_mode,save_mode;
-  int forest_cover_threshold,nrows;
+  int forest_cover_threshold;
   bool check_consistency,flush_clusters,verbose,calc_surface_area;
 };
 
@@ -100,7 +99,7 @@ class Cluster
   protected:
     void FlushClusters(int cur_row);
     void AddClusterStats(int64_t parea,const tcelldata &cell);
-    void AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss);
+    void AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state);
     int UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len);
     cluster_stats myStats;
     void CompressTree(int cur_row);

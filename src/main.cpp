@@ -33,7 +33,6 @@ const std::string LISA_USAGE={
 "  -p,--pixel      minimum pixel length for edge detection, default: 1\n"
 "  -w,--write      write clusterlabel data (bin/lab), 1=clusters+labels, 2=labels\n"
 "  -b              mean biomass\n"
-"  --nrows         number of rows to process\n"
 "  --agb-file      agb biomass file [t/ha]\n"
 "  --bthres        biomass threshold [t/ha] (default: 0 t/ha)\n"
 "  --raster-file   intersection file for analyzation\n"
@@ -113,7 +112,6 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("-v","--verbose")) myCmdOpt.getOpt(verbosity_level);
     if (myCmdOpt.searchOption("-d","--dept")) {myCmdOpt.getOpt(AnalyzeOptions.edge_dept);};
     if (myCmdOpt.searchOption("","--threshold")) {myCmdOpt.getOpt(AnalyzeOptions.forest_cover_threshold);};
-    if (myCmdOpt.searchOption("","--nrows")) {myCmdOpt.getOpt(AnalyzeOptions.nrows);};
     if (myCmdOpt.searchOption("","--map-mask")) {myCmdOpt.getOpt(str_maskfile);};
     if (myCmdOpt.searchOption("","--flush")) {AnalyzeOptions.flush_clusters=true;};
     if (myCmdOpt.searchOption("-f","--fragment")) {myCmdOpt.getOpt(AnalyzeOptions.min_fragment_size);};

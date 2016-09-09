@@ -318,7 +318,7 @@ void Cluster::WriteHist(ofstream &file,std::vector <double> &hist,std::string he
   file<<"\n";
 }
 
-void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss)
+void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state)
 {
     if (cell.area/10000.>opt.analyze_opt.min_fragment_size) {
         int dclass=floor(log10(cell.area/10000.));
@@ -336,7 +336,10 @@ void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_a
           hist_biomass[dclass]+=cell.biomass/1000000000.;
           hist_totalloss[dclass]+=CalculateCLoss(cell.biomass,cell.area,edge_area_de);
 
-        } else cout << "warning: too large fragment detected: " << cell.area/10000. << " ha" << endl;
+          int fragment_state=(int)std::round( ((cell.area-edge_area_de)/cell.area)*100.);
+          if (fragment_state<0 || fragment_state>100) std::cerr << "warning: fragment state outside [0..100%]: " << fragment_state << std::endl;
+          else hist_fragment_state[fragment_state]+=cell.area;
+        } else std::cerr << "warning: too large fragment detected: " << cell.area/10000. << " ha" << std::endl;
     }
 }
 
@@ -348,6 +351,7 @@ void Cluster::SaveSmallClusterData(std::string &fname)
   std::vector <double>hist_totaledge(10);
   std::vector <double>hist_biomass(10);
   std::vector <double>hist_totalloss(10);
+  std::vector <double>hist_fragment_state_area(101);
 
   if (opt.analyze_opt.flush_clusters) { // read clusters from file
     ofs_clusterfile.open(opt.str_clusterflushfile,ios::binary|ios::in);
@@ -364,13 +368,13 @@ void Cluster::SaveSmallClusterData(std::string &fname)
        cell.area=Utils::GetDouble(buffer+8);
        cell.border=Utils::GetDouble(buffer+16);
        cell.biomass=Utils::GetDouble(buffer+24);
-       AddClusterSmallStats(cell,hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss);
+       AddClusterSmallStats(cell,hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss,hist_fragment_state_area);
     }
     ofs_clusterfile.close();
   } else {
     for (int64_t i=1;i<=max_cluster_label;i++)
       if (cdata[i]<0) {
-        AddClusterSmallStats(clusterdata[i],hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss);
+        AddClusterSmallStats(clusterdata[i],hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss,hist_fragment_state_area);
       }
   }
 
@@ -387,6 +391,7 @@ void Cluster::SaveSmallClusterData(std::string &fname)
     WriteHist(myfile,hist_totaledge,"edge area distribution (10^6 ha)");
     WriteHist(myfile,hist_biomass,"biomass distribution (Gt)");
     WriteHist(myfile,hist_totalloss,"c-loss distribution (Gt)");
+    WriteHist(myfile,hist_fragment_state_area,"state distribution");
     myfile.close();
   }
 }
