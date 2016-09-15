@@ -44,7 +44,8 @@ class AnalyzeOptions {
     //ncells=1; // number of interpolation cells
     edge_dept=100; // edge effect dept 100m
     min_fragment_size=0; // minimum fragment size 0 ha
-    pixel_len=1; // pixel number for edge detection
+    max_npixel_vert=1; // pixel number for edge detection
+    edge_distance=50;
 
     write_mode=0;
     save_mode=0;
@@ -56,8 +57,8 @@ class AnalyzeOptions {
     verbose=true;
     calc_surface_area=false;
   }
-  double mean_biomass,bthres,relative_carbon_loss;
-  int edge_dept,min_fragment_size,pixel_len,write_mode,save_mode;
+  double mean_biomass,bthres,relative_carbon_loss,edge_distance;
+  int edge_dept,min_fragment_size,write_mode,save_mode,max_,max_npixel_vert;
   int forest_cover_threshold;
   bool check_consistency,flush_clusters,verbose,calc_surface_area;
 };
@@ -108,7 +109,7 @@ class Cluster
     void WriteLabelFile();
     void WriteClusterfile();
     void WriteMarkedRow(int64_t *clusterow,uint32_t width,FILE *file);
-    void DetectBorders(int row,int cur_row,int i);
+    void DetectBorders(int row,int cur_row,int i,inter_cell &icell);
     void CalculateBorder(inter_cell &icell,double &border_len);
     void PrintProgress(int y,int height);
     void ProcessRow(int row,int row_offset,int cur_row,int mask_ptr);

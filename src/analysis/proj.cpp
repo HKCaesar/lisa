@@ -277,16 +277,40 @@ void Projection::GenerateInterpolation()
   double mean_pixel_area=0;
   double latitude=top;
 
+  double min_width=std::numeric_limits<double>::max();
+  double min_height=std::numeric_limits<double>::max();
+  double max_width=0.;
+  double max_height=0.;
+
+  double edge_distance=50.0; // length of non-forest distance to declare a forest-pixel as edge
   for (int i=0;i<height;i++)
   {
     GetLatLong(0,i,l1,t1); // slightly better precicion than using (latitude,latitude-cellsize)
+
 
     inter_cell cell1=CalcPixelArea_trapezoid(t1); // calc using trapezoid
     inter_cell cell2=CalcPixelArea_exact(t1);
 
     mean_pixel_area+=cell1.pixel_area;
 
-    if (fabs(cell2.pixel_area-cell1.pixel_area)>1E-5) cout << "proj: pixel areas mismatch" << endl;
+    if (fabs(cell2.pixel_area-cell1.pixel_area)>1E-5) std::cerr << "proj: pixel areas mismatch" << endl;
+
+    double mean_pixel_width=(cell2.pixel_width_top+cell2.pixel_width_top)/2.; // doesn't really matter
+    double mean_pixel_height=cell2.pixel_height;
+    cell2.npixel_horiz=ceil(edge_distance/mean_pixel_width); // calculate number of pixels needed to match "edge_distance"
+    cell2.npixel_vert=ceil(edge_distance/mean_pixel_height);
+    if (cell2.npixel_vert>max_npixel_vert) max_npixel_vert=cell2.npixel_vert;
+
+    if (fabs(t1)<1E-10 || (i==0) || (i==height-1)) {
+      std::cout << "proj: pixels for edge distance of " << Utils::ConvertFixed(edge_distance,2) << "m at lat " << std::setw(5) << Utils::ConvertFixed(t1,1) << "rad: " << cell2.npixel_horiz << "x" << cell2.npixel_vert << std::endl;
+    }
+
+    max_width=std::max(max_width,cell2.pixel_width_top);
+    max_width=std::max(max_width,cell2.pixel_width_bottom);
+    min_width=std::min(min_width,cell2.pixel_width_bottom);
+    min_width=std::min(min_width,cell2.pixel_width_top);
+    max_height=std::max(max_height,cell2.pixel_height);
+    min_height=std::min(min_height,cell2.pixel_height);
 
     inter_matrix[i]=cell2;
     len_calc+=cell2.pixel_height;
@@ -296,7 +320,9 @@ void Projection::GenerateInterpolation()
   double diff=fabs(len_test-len_calc);
   mean_pixel_area/=(double)height;
   // total difference should not be larger than 0.5m
-  if (diff>0.) cout << "proj: calculated distances do not match (" << diff << " m)" << endl;
-  cout << "proj: mean-pixel area: " << Utils::ConvertFixed(mean_pixel_area,2) << " m^2" << endl;
-  cout << endl;
+  std::cout << "proj: mean-pixel area: " << Utils::ConvertFixed(mean_pixel_area,2) << " m^2" << std::endl;
+  std::cout << "min width: " << Utils::ConvertFixed(min_width,2) << "m, height: " << Utils::ConvertFixed(min_height,2) << "m" << std::endl;
+  std::cout << "max width: " << Utils::ConvertFixed(max_width,2) << "m, height: " << Utils::ConvertFixed(max_height,2) << "m" << std::endl;
+  if (diff>0.) std::cout << "proj: calculated distances do not match (" << diff << " m)" << endl;
+  std::cout << endl;
 }

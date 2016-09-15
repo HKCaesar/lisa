@@ -3,7 +3,7 @@
 #include "cmdline.h"
 #include "analysis/map.h"
 
-#define LISA_VERSION "Large Image Spatial Analysis v1.4.1 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v1.5 (c) 2014-2016 - Sebastian Lehmann"
 
 void PrintVersion(int mode=0)
 {
@@ -118,7 +118,7 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("-w","--write")) myCmdOpt.getOpt(AnalyzeOptions.write_mode);
     if (myCmdOpt.searchOption("-s","--save")) myCmdOpt.getOpt(AnalyzeOptions.save_mode);
     if (myCmdOpt.searchOption("-b","")) myCmdOpt.getOpt(AnalyzeOptions.mean_biomass);
-    if (myCmdOpt.searchOption("-p","--pixel")) myCmdOpt.getOpt(AnalyzeOptions.pixel_len);
+    if (myCmdOpt.searchOption("","--edge-distance")) myCmdOpt.getOpt(AnalyzeOptions.edge_distance);
     if (myCmdOpt.searchOption("-i","--input")) myCmdOpt.getOpt(str_ifile);
     if (myCmdOpt.searchOption("-o","--output")) myCmdOpt.getOpt(str_ofile);
     if (myCmdOpt.searchOption("","--agb-file")) myCmdOpt.getOpt(str_bmfile);
@@ -137,7 +137,7 @@ int main(int argc,char *argv[])
        cout << "edge dept:     " << AnalyzeOptions.edge_dept << endl;
        cout << "mean biosmass: " << AnalyzeOptions.mean_biomass << endl;
        cout << "min fragment:  " << AnalyzeOptions.min_fragment_size << endl;
-       cout << "pixel len:     " << AnalyzeOptions.pixel_len << endl;
+       cout << "edge distance: " << AnalyzeOptions.edge_distance << endl;
        cout << "rel. c-loss:   " << AnalyzeOptions.relative_carbon_loss << endl;
        cout << "savemode:      " << AnalyzeOptions.save_mode << endl;
        cout << "writemode:     " << AnalyzeOptions.write_mode << endl;

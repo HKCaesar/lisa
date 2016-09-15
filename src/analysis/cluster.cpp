@@ -3,7 +3,7 @@
 
 Cluster::Cluster(BRIOptions &Options)
 :opt(Options),bri_width(opt.myIMG.GetWidth()),mask_rows(2,std::vector<char>(bri_width)),
-lookahead_rows(opt.analyze_opt.pixel_len),bufrows((2*lookahead_rows)+1),vborder(4)
+lookahead_rows(opt.analyze_opt.max_npixel_vert),bufrows((2*lookahead_rows)+1),vborder(4)
 {
   //rowbuffer=new uint8_t[bri_width];
   wrows=new int64_t*[bufrows];
@@ -151,24 +151,27 @@ void Cluster::CalculateBorder(inter_cell &icell,double &border_len)
   if (vborder[3]) border_len+=icell.pixel_width_bottom;
 }
 
-void Cluster::DetectBorders(int row,int cur_row,int i)
+void Cluster::DetectBorders(int row,int cur_row,int i,inter_cell &icell)
 {
   int j;
-  const int pixel_len=opt.analyze_opt.pixel_len;
+  std::fill(begin(vborder),end(vborder),true);
+
+  const int pixel_len_horiz=icell.npixel_horiz;
+  const int pixel_len_vert=icell.npixel_vert;
+  if (pixel_len_vert>opt.analyze_opt.max_npixel_vert) std::cerr << "warning: row look_ahead_buffer too small" << std::endl;
   //const int pixel_len1=pixel_len+1;
 
-  std::fill(begin(vborder),end(vborder),true);
-  if (i>=pixel_len) {
-    for (j=1;j<=pixel_len;j++) {if (wrows[cur_row][i-j]!=0) {vborder[0]=false;break;}};
+  if (i>=pixel_len_horiz) {
+    for (j=1;j<=pixel_len_horiz;j++) {if (wrows[cur_row][i-j]!=0) {vborder[0]=false;break;}};
     //if (vborder[0]) {if (i>=pixel_len1 && wrows[cur_row][i-pixel_len1]==0) vcorridor[0]=false;};
   }
-  if (i<bri_width-pixel_len) {
-    for (j=1;j<=pixel_len;j++) {if (wrows[cur_row][i+j]!=0) {vborder[1]=false;break;}};
+  if (i<bri_width-pixel_len_horiz) {
+    for (j=1;j<=pixel_len_horiz;j++) {if (wrows[cur_row][i+j]!=0) {vborder[1]=false;break;}};
     //if (vborder[1]) {if (i<bri_width-pixel_len1 && wrows[cur_row][i+pixel_len1]==0) vcorridor[1]=false;};
   }
-  if (row>=pixel_len) {
+  if (row>=pixel_len_vert) {
     int trow=cur_row;
-    for (j=1;j<=pixel_len;j++) {
+    for (j=1;j<=pixel_len_vert;j++) {
       if (--trow<0) trow=bufrows-1;
       if (wrows[trow][i]!=0) {vborder[2]=false;break;};
     };
@@ -177,9 +180,9 @@ void Cluster::DetectBorders(int row,int cur_row,int i)
       if (row>=pixel_len1 && wrows[trow][i]==0) vcorridor[2]=false;
     }*/
   }
-  if (row<num_rows-pixel_len) {
+  if (row<num_rows-pixel_len_vert) {
     int trow=cur_row;
-    for (j=1;j<=pixel_len;j++) {
+    for (j=1;j<=pixel_len_vert;j++) {
       if (++trow>=bufrows) trow=0;
       if (wrows[trow][i]!=0) {vborder[3]=false;break;}
     };
@@ -219,27 +222,27 @@ void Cluster::ProcessRow(int irow,int row_offset,int cur_row,int mask_ptr)
 
   double border_len;
   int64_t *currow=wrows[cur_row];
-  for (int i=0;i<bri_width;i++)
+  for (int col=0;col<bri_width;col++)
   {
-    if (currow[i] && (mask_rows[mask_ptr][i]=myShapeFile.IsCLASS(i,numrow))) {
+    if (currow[col] && (mask_rows[mask_ptr][col]=myShapeFile.IsCLASS(col,numrow))) {
       if (opt.analyze_opt.calc_surface_area) myStats.surface_area+=icell.pixel_area;
       num_1pixel++;
 
       int64_t pleft=0,ptop=0; // load the left & top pixels for the hoshen-kopelman algorithm
-      if (i>0) pleft=mask_rows[mask_ptr][i-1]?currow[i-1]:0; // beware: mask_rows is invalid if currow[i-1]=0, but pleft=0, independent of the state of mask_rows
-      if (irow>0) ptop=mask_rows[mask_ptr?0:1][i]?wrows[(cur_row-1)<0?(bufrows-1):(cur_row-1)][i]:0; // same applies for prev row
+      if (col>0) pleft=mask_rows[mask_ptr][col-1]?currow[col-1]:0; // beware: mask_rows is invalid if currow[i-1]=0, but pleft=0, independent of the state of mask_rows
+      if (irow>0) ptop=mask_rows[mask_ptr?0:1][col]?wrows[(cur_row-1)<0?(bufrows-1):(cur_row-1)][col]:0; // same applies for prev row
 
-      DetectBorders(irow,cur_row,i);
+      DetectBorders(irow,cur_row,col,icell);
       CalculateBorder(icell,border_len);
 
       max_border_pixel+=4;
 
-      double biomass_m2=opt.BMass.getBiomassRef(i,numrow);
+      double biomass_m2=opt.BMass.getBiomassRef(col,numrow);
 
       if (pleft==0 && ptop==0) // new label
       {
          max_cluster_label++;
-         currow[i]=max_cluster_label;
+         currow[col]=max_cluster_label;
 
          tcelldata tcell;tcell.area=icell.pixel_area;tcell.border=border_len;tcell.biomass=icell.pixel_area*biomass_m2;
          cdata.push_back(-1);
@@ -247,7 +250,7 @@ void Cluster::ProcessRow(int irow,int row_offset,int cur_row,int mask_ptr)
       } else if (ptop==0 || pleft==0 || (ptop==pleft)) //cluster already seen, but no conflict
       {
         int64_t root=FindCollapse(std::max(pleft,ptop));
-        currow[i]=root;
+        currow[col]=root;
         cdata[root]--;
         clusterdata[root].area+=icell.pixel_area;
         clusterdata[root].border+=border_len;
@@ -266,14 +269,14 @@ void Cluster::ProcessRow(int irow,int row_offset,int cur_row,int mask_ptr)
           clusterdata[lmin].border+=clusterdata[lmax].border;
           clusterdata[lmin].biomass+=clusterdata[lmax].biomass;
         }
-        currow[i]=lmin;
+        currow[col]=lmin;
         cdata[lmin]--;
         clusterdata[lmin].area+=icell.pixel_area;
         clusterdata[lmin].border+=border_len;
         clusterdata[lmin].biomass+=(icell.pixel_area*biomass_m2);
       }
     } else {
-      if (opt.analyze_opt.calc_surface_area && myShapeFile.IsCLASS(i,numrow)) myStats.surface_area+=icell.pixel_area;
+      if (opt.analyze_opt.calc_surface_area && myShapeFile.IsCLASS(col,numrow)) myStats.surface_area+=icell.pixel_area;
     }
   }
   if (opt.analyze_opt.write_mode==1)WriteMarkedRow(currow,bri_width,clusterfile1);
@@ -752,7 +755,7 @@ void Cluster::ClusterAnalyzation(const geoExtend &myextend)
   cout << "mean area:           " << std::fixed << std::setprecision(4) << myStats.mean_area << " ha" << endl;
   cout << "max area:            " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.max_area) << " 10^6 ha" << endl;
   cout << "min area:            " << std::fixed << std::setprecision(4) << (myStats.min_area/10000) << " ha" << endl;
-  cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (pixel-len: " << opt.analyze_opt.pixel_len << ")" << endl;
+  cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (edge distance: " << opt.analyze_opt.edge_distance << "m)" << std::endl;
   //cout << "max edge len:        " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm((double)max_border_pixel*sqrt(opt.Proj.GetMeanPixelArea())) << " 10^6 km" << endl;
   cout << "edge area (DE):      " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_de) << " 10^6 ha" << ", edge effect dept: " << std::fixed << std::setprecision(1) << opt.analyze_opt.edge_dept << " m" << endl;
   if (myStats.total_area)
