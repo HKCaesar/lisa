@@ -65,7 +65,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
       myProj.CalculateCellSize();
       myProj.PrintInfo();
       cout << endl;
-      myProj.GenerateInterpolation();
+      myProj.GenerateInterpolation(AnalyzeOptions.edge_distance);
       AnalyzeOptions.max_npixel_vert=myProj.GetMaxVerticalPixels(); // set maximal vertical pixels for correct buffer-size
       //cout << "vertical pixels: " << myProj.GetMaxVerticalPixels() << std::endl;
 

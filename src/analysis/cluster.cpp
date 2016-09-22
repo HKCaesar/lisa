@@ -50,7 +50,7 @@ int64_t Cluster::GetNumRoots()
 double Cluster::CalculateEdgeAreaDE(double area,double edge_len,double edge_effect_dept)
 {
   double edge_area=0.;
-  if (edge_len*edge_effect_dept>4.*area) edge_area=area;
+  if (edge_len*edge_effect_dept>2*area) edge_area=area;
   else  // calculate size-index from didham & ewers core area model
   {
     const double si=edge_len/(2.*sqrt(M_PI*area));
@@ -154,44 +154,31 @@ void Cluster::CalculateBorder(inter_cell &icell,double &border_len)
 void Cluster::DetectBorders(int row,int cur_row,int i,inter_cell &icell)
 {
   int j;
-  std::fill(begin(vborder),end(vborder),true);
+  std::fill(begin(vborder),end(vborder),true); // every cardinal edge on by default
 
   const int pixel_len_horiz=icell.npixel_horiz;
   const int pixel_len_vert=icell.npixel_vert;
-  if (pixel_len_vert>opt.analyze_opt.max_npixel_vert) std::cerr << "warning: row look_ahead_buffer too small" << std::endl;
-  //const int pixel_len1=pixel_len+1;
+  if (pixel_len_vert>opt.analyze_opt.max_npixel_vert) std::cerr << "warning: row look_ahead_buffer too small" << std::endl; // can never happen! lol
 
-  if (i>=pixel_len_horiz) {
+  if (i>=pixel_len_horiz) { // East
     for (j=1;j<=pixel_len_horiz;j++) {if (wrows[cur_row][i-j]!=0) {vborder[0]=false;break;}};
-    //if (vborder[0]) {if (i>=pixel_len1 && wrows[cur_row][i-pixel_len1]==0) vcorridor[0]=false;};
   }
-  if (i<bri_width-pixel_len_horiz) {
+  if (i<bri_width-pixel_len_horiz) { // West
     for (j=1;j<=pixel_len_horiz;j++) {if (wrows[cur_row][i+j]!=0) {vborder[1]=false;break;}};
-    //if (vborder[1]) {if (i<bri_width-pixel_len1 && wrows[cur_row][i+pixel_len1]==0) vcorridor[1]=false;};
   }
-  if (row>=pixel_len_vert) {
+  if (row>=pixel_len_vert) { // North
     int trow=cur_row;
     for (j=1;j<=pixel_len_vert;j++) {
-      if (--trow<0) trow=bufrows-1;
+      if (--trow<0) trow=bufrows-1; // buffer wrap
       if (wrows[trow][i]!=0) {vborder[2]=false;break;};
     };
-    /*if (vborder[2]) {
-      if (--trow<0) trow=bufrows-1;
-      if (row>=pixel_len1 && wrows[trow][i]==0) vcorridor[2]=false;
-    }*/
   }
-  if (row<num_rows-pixel_len_vert) {
+  if (row<num_rows-pixel_len_vert) { // South
     int trow=cur_row;
     for (j=1;j<=pixel_len_vert;j++) {
       if (++trow>=bufrows) trow=0;
       if (wrows[trow][i]!=0) {vborder[3]=false;break;}
     };
-    /*if (vborder[3]) {
-      if (++trow>=bufrows) trow=0;
-      if (row<num_rows-pixel_len1 && wrows[trow][i]==0) vcorridor[3]=false;
-    }*/
-    //for (j=1;j<=pixel_len;j++) {if (wrows[Utils::SMod(cur_row+j,bufrows)][i]!=0) {vborders[3]=false;break;}};
-    //if (row<num_rows-pixel_len1 && wrows[Utils::SMod(cur_row+pixel_len1,bufrows)][i]==0) vcorridor[3]=false;
   }
 }
 
@@ -708,7 +695,7 @@ void Cluster::ClusterAnalyzation(const geoExtend &myextend)
       ProcessRow(row,ptop,cur_ptr,mask_ptr);
 
       //if (row%10000==0) CompressTree(cur_ptr);
-      if (opt.analyze_opt.flush_clusters && (row+1)%100==0) FlushClusters(cur_ptr);
+      if (opt.analyze_opt.flush_clusters && (row+1)%1000==0) FlushClusters(cur_ptr);
 
       cur_ptr=(cur_ptr+1)%bufrows;
       row_ptr=(row_ptr+1)%bufrows;

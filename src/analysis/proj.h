@@ -50,7 +50,7 @@ class Projection {
     {
       return inter_matrix[y];
     }
-    void GenerateInterpolation();
+    void GenerateInterpolation(double edge_distance);
     void SetDummyInterpolation(int len);
     int GetMaxVerticalPixels(){return max_npixel_vert;};
     //double GetMeanPixelArea(){return mean_pixelarea;};

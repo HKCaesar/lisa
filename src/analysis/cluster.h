@@ -45,7 +45,7 @@ class AnalyzeOptions {
     edge_dept=100; // edge effect dept 100m
     min_fragment_size=0; // minimum fragment size 0 ha
     max_npixel_vert=1; // pixel number for edge detection
-    edge_distance=50;
+    edge_distance=60;
 
     write_mode=0;
     save_mode=0;

@@ -256,7 +256,7 @@ inter_cell Projection::CalcPixelArea_exact(double top)
   return cell;
 }
 
-void Projection::GenerateInterpolation()
+void Projection::GenerateInterpolation(double edge_distance)
 {
   inter_matrix.resize(height);
   //double len_test=CalcDist_Vincenty(top,left,bottom,left); // calculate len from top to bottom
@@ -282,7 +282,6 @@ void Projection::GenerateInterpolation()
   double max_width=0.;
   double max_height=0.;
 
-  double edge_distance=50.0; // length of non-forest distance to declare a forest-pixel as edge
   for (int i=0;i<height;i++)
   {
     GetLatLong(0,i,l1,t1); // slightly better precicion than using (latitude,latitude-cellsize)
@@ -297,8 +296,8 @@ void Projection::GenerateInterpolation()
 
     double mean_pixel_width=(cell2.pixel_width_top+cell2.pixel_width_top)/2.; // doesn't really matter
     double mean_pixel_height=cell2.pixel_height;
-    cell2.npixel_horiz=ceil(edge_distance/mean_pixel_width); // calculate number of pixels needed to match "edge_distance"
-    cell2.npixel_vert=ceil(edge_distance/mean_pixel_height);
+    cell2.npixel_horiz=int(edge_distance/mean_pixel_width); // calculate number of pixels needed to match "edge_distance"
+    cell2.npixel_vert=int(edge_distance/mean_pixel_height);
     if (cell2.npixel_vert>max_npixel_vert) max_npixel_vert=cell2.npixel_vert;
 
     if (fabs(t1)<1E-10 || (i==0) || (i==height-1)) {
