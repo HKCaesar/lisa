@@ -26,7 +26,7 @@
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="--analyze --input c:\data\hansen2000\Hansen_FC2000_UINT8_LZW_world.tif --threshold 50 --shape-file c:\data\wwf\olsenmap.txt --nrows 1000" />
+				<Option parameters="--analyze --input c:\data\hansen2000\Hansen_FC2000_UINT8_LZW_world.tif --threshold 50 --edge-distance 60 --extend 70,-180,180,68" />
 				<Compiler>
 					<Add option="-O2" />
 					<Add directory="../../msys64/mingw64/include" />

@@ -46,6 +46,11 @@ int64_t Cluster::GetNumRoots()
   return num_roots;
 }
 
+double Cluster::CalculateShapeIndex(double edge_len,double area)
+{
+  return edge_len/(2*sqrt(M_PI*area));
+}
+
 // calculate edge-effected area
 double Cluster::CalculateEdgeAreaDE(double area,double edge_len,double edge_effect_dept)
 {
@@ -97,6 +102,10 @@ void Cluster::AddClusterStats(int64_t parea,const tcelldata &cell)
       myStats.total_border_len+=cell.border;
       double edge_area_de=CalculateEdgeAreaDE(cell.area,cell.border);
       myStats.total_edge_area_de+=edge_area_de;
+      myStats.total_edge_area_250+=CalculateEdgeAreaDE(cell.area,cell.border,250);
+      myStats.total_edge_area_500+=CalculateEdgeAreaDE(cell.area,cell.border,500);
+      myStats.total_edge_area_1000+=CalculateEdgeAreaDE(cell.area,cell.border,1000);
+
       myStats.total_edge_area_circle+=CalculateEdgeAreaCircle(cell.area);
 
       double rel_area=((cell.area-edge_area_de)*100.)/cell.area; // each fragment has one of four state conditions
@@ -308,12 +317,15 @@ void Cluster::WriteHist(ofstream &file,std::vector <double> &hist,std::string he
   file<<"\n";
 }
 
-void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state)
+void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state,vector <int64_t>&hist_fragment_si,vector <double>&hist_mean_si)
 {
     if (cell.area/10000.>opt.analyze_opt.min_fragment_size) {
         int dclass=floor(log10(cell.area/10000.));
         if (dclass<0) dclass=0;
         else if (dclass<9) dclass++;
+
+        double dsi=CalculateShapeIndex(cell.border,cell.area);
+
         if (dclass>=0 && dclass<=9)
         {
           hist_area[dclass]++;
@@ -329,7 +341,12 @@ void Cluster::AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_a
           int fragment_state=(int)std::round( ((cell.area-edge_area_de)/cell.area)*100.);
           if (fragment_state<0 || fragment_state>100) std::cerr << "warning: fragment state outside [0..100%]: " << fragment_state << std::endl;
           else hist_fragment_state[fragment_state]+=cell.area;
+
+          hist_mean_si[dclass]+=dsi;
         } else std::cerr << "warning: too large fragment detected: " << cell.area/10000. << " ha" << std::endl;
+
+        int isi=floor(dsi);
+        if (isi<1001) hist_fragment_si[isi]+=1;
     }
 }
 
@@ -342,6 +359,8 @@ void Cluster::SaveSmallClusterData(std::string &fname)
   std::vector <double>hist_biomass(10);
   std::vector <double>hist_totalloss(10);
   std::vector <double>hist_fragment_state_area(101);
+  std::vector <int64_t>hist_fragment_si(1001);
+  std::vector <double>hist_mean_si(10);
 
   if (opt.analyze_opt.flush_clusters) { // read clusters from file
     ofs_clusterfile.open(opt.str_clusterflushfile,ios::binary|ios::in);
@@ -358,13 +377,13 @@ void Cluster::SaveSmallClusterData(std::string &fname)
        cell.area=Utils::GetDouble(buffer+8);
        cell.border=Utils::GetDouble(buffer+16);
        cell.biomass=Utils::GetDouble(buffer+24);
-       AddClusterSmallStats(cell,hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss,hist_fragment_state_area);
+       AddClusterSmallStats(cell,hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss,hist_fragment_state_area,hist_fragment_si,hist_mean_si);
     }
     ofs_clusterfile.close();
   } else {
     for (int64_t i=1;i<=max_cluster_label;i++)
       if (cdata[i]<0) {
-        AddClusterSmallStats(clusterdata[i],hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss,hist_fragment_state_area);
+        AddClusterSmallStats(clusterdata[i],hist_area,hist_totalarea,hist_totaledge,hist_biomass,hist_totalloss,hist_fragment_state_area,hist_fragment_si,hist_mean_si);
       }
   }
 
@@ -382,6 +401,8 @@ void Cluster::SaveSmallClusterData(std::string &fname)
     WriteHist(myfile,hist_biomass,"biomass distribution (Gt)");
     WriteHist(myfile,hist_totalloss,"c-loss distribution (Gt)");
     WriteHist(myfile,hist_fragment_state_area,"state distribution");
+    WriteHist(myfile,hist_fragment_si,"shape index distribution");
+    WriteHist(myfile,hist_mean_si,"mean shape index distribution");
     myfile.close();
   }
 }
@@ -745,6 +766,9 @@ void Cluster::ClusterAnalyzation(const geoExtend &myextend)
   cout << "edge len:            " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm(myStats.total_border_len) << " 10^6 km (edge distance: " << opt.analyze_opt.edge_distance << "m)" << std::endl;
   //cout << "max edge len:        " << std::fixed << std::setprecision(4) << Utils::Metre_To_MillKm((double)max_border_pixel*sqrt(opt.Proj.GetMeanPixelArea())) << " 10^6 km" << endl;
   cout << "edge area (DE):      " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_de) << " 10^6 ha" << ", edge effect dept: " << std::fixed << std::setprecision(1) << opt.analyze_opt.edge_dept << " m" << endl;
+  cout << " edge area (250m):   " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_250) << " 10^6 ha" << endl;
+  cout << " edge area (500m):   " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_500) << " 10^6 ha" << endl;
+  cout << " edge area (1000m):  " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_1000) << " 10^6 ha" << endl;
   if (myStats.total_area)
   cout << "edge area/area:      " << std::fixed << std::setprecision(2) << (myStats.total_edge_area_de/myStats.total_area*100) << " %" << endl;
   cout << "edge area (Circle):  " << std::fixed << std::setprecision(4) << Utils::SqMetre_To_MillHa(myStats.total_edge_area_circle) << " 10^6 ha" << endl;

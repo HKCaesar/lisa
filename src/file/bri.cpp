@@ -275,7 +275,7 @@ void IMGBRI::PrintCompression(uint64_t insize,FILE *infile,FILE *outfile)
   cout << (inpos>>20) << " MB (" << Utils::ConvertFixed(ratio1,1) << "%)->" << (outpos>>20) << " MB: " << Utils::ConvertFixed(ratio2,1) << "% \r";
 }
 
-void IMGBRI::ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE compression_type)
+void IMGBRI::ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE compression_type,int threshold)
 {
   comptype=compression_type;
 
@@ -290,6 +290,12 @@ void IMGBRI::ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE com
     {
       myIMG.ReadRow(rowbuffer);
       if ((y+1)%100==0) PrintProgress(y+1,myIMG.GetHeight(),file);
+      if (threshold) {
+        for (int i=0;i<myIMG.GetWidth();i++) {
+          if (rowbuffer[i]>threshold) rowbuffer[i]=1;
+          else rowbuffer[i]=0;
+        }
+      }
       total_written+=WriteRow(rowbuffer);
     }
     PrintProgress(myIMG.GetHeight(),myIMG.GetHeight(),file);

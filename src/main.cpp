@@ -3,7 +3,7 @@
 #include "cmdline.h"
 #include "analysis/map.h"
 
-#define LISA_VERSION "Large Image Spatial Analysis v1.5.1 (c) 2014-2016 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v1.6.0 (c) 2014-2017 - Sebastian Lehmann"
 
 void PrintVersion(int mode=0)
 {
@@ -47,6 +47,7 @@ const std::string LISA_USAGE={
 "  -e,--extend      top,left,right,bottom\n"
 "--reduce           reduce classified image\n"
 "--classify         classify density map and datamask map\n"
+"  --map-mask       datamask map\n"
 "  --map-scale      number of output classes 1...256\n"
 "  --map-class      0=4 classes, 1=--map-scale classes\n"
 "--map-reduction    reduction factor, default: 500\n"
@@ -154,7 +155,7 @@ int main(int argc,char *argv[])
     switch (cmode) {
       case ComandLine::ANALYZE:myCmdLine.Analyze(str_ifile,str_bmfile,str_shapefile,shape_mask,AnalyzeOptions,myGeoExtend);break;
       case ComandLine::CONVERT:
-      case ComandLine::INFO:myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);break;
+      case ComandLine::INFO:myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend,AnalyzeOptions.forest_cover_threshold);break;
       case ComandLine::TEST:myCmdLine.TestConsistency();break;
       case ComandLine::MAP:myCmdLine.Create(str_ifile,str_ofile,reduction_factor,map_type,AnalyzeOptions.edge_dept,myGeoExtend);break;
       case ComandLine::REDUCE:myCmdLine.Reduce(str_ifile,str_ofile,reduction_factor);break;

@@ -12,7 +12,7 @@ class ComandLine {
   public:
     enum METHOD {NONE,ANALYZE,CONVERT,INFO,MAP,CLASSIFY,REDUCE,TEST,VERSION};
     void Analyze(const std::string &str_ifile,const std::string &str_bfile,const std::string &shapefile,const std::vector<int>shape_mask,AnalyzeOptions &AnalyzeOptions,const geoExtend &myextend);
-    void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend);
+    void Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool overwrite,const geoExtend &myExtend,int threshold);
     void TestConsistency();
     int OpenInputRaster(const std::string &str_ifile);
     void Create(const std::string &str_ifile,const std::string &str_ofile,int reduction_factor,int map_type,int edge_effect_dept,const geoExtend &myExtend);

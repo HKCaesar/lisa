@@ -78,11 +78,11 @@
 
 1411378605 c:\code\lisa\model\cm.h
 
-1473169858 source:c:\code\lisa\src\analysis\cluster.cpp
+1486043598 source:c:\code\lisa\src\analysis\cluster.cpp
 	"cluster.h"
 	"..\model\sic.h"
 
-1473169752 c:\code\lisa\src\analysis\cluster.h
+1486120693 c:\code\lisa\src\analysis\cluster.h
 	"proj.h"
 	"..\file\bm.h"
 	"..\file\shape.h"
@@ -100,7 +100,7 @@
 	"global.h"
 	"imgfile.h"
 
-1459862660 c:\code\lisa\src\global.h
+1459859060 c:\code\lisa\src\global.h
 	<algorithm>
 	<iostream>
 	<vector>
@@ -114,36 +114,36 @@
 	<cstring>
 	<sys/time.h>
 
-1411378714 c:\code\lisa\src\model\rangecoder.h
+1411375114 c:\code\lisa\src\model\rangecoder.h
 	"..\global.h"
 	"model.h"
 
-1411132024 c:\code\lisa\src\model\model.h
+1411128424 c:\code\lisa\src\model\model.h
 
-1411380524 c:\code\lisa\src\model\counter.h
+1411376924 c:\code\lisa\src\model\counter.h
 	"model.h"
 
-1459246896 c:\code\lisa\src\model\mixer.h
+1459243296 c:\code\lisa\src\model\mixer.h
 	"model.h"
-	"..\global.h"
-	"..\utils.h"
-
-1470047342 c:\code\lisa\src\analysis\proj.h
 	"..\global.h"
 	"..\utils.h"
 
-1458826279 source:c:\code\lisa\src\analysis\proj.cpp
+1474529247 c:\code\lisa\src\analysis\proj.h
+	"..\global.h"
+	"..\utils.h"
+
+1474529368 source:c:\code\lisa\src\analysis\proj.cpp
 	"proj.h"
 
 1429524899 source:c:\code\lisa\src\bri.cpp
 	"bri.h"
 
-1411391732 c:\code\lisa\src\model\cm.h
+1411388132 c:\code\lisa\src\model\cm.h
 	"counter.h"
 	"mixer.h"
 	"rangecoder.h"
 
-1473170205 source:c:\code\lisa\src\main.cpp
+1486045558 source:c:\code\lisa\src\main.cpp
 	"global.h"
 	"common/cmdoptions.h"
 	"cmdline.h"
@@ -154,13 +154,13 @@
 
 1410528127 c:\code\lisa\src\bmatrix.h
 
-1411121917 source:c:\code\lisa\src\model\rangecoder.cpp
+1411118317 source:c:\code\lisa\src\model\rangecoder.cpp
 	"RangeCoder.h"
 
 1414581962 source:c:\code\lisa\src\pgm.cpp
 	"pgm.h"
 
-1411391710 source:c:\code\lisa\src\model\cm.cpp
+1411388110 source:c:\code\lisa\src\model\cm.cpp
 	"cm.h"
 
 1414582797 c:\code\lisa\src\imgfile.h
@@ -187,7 +187,7 @@
 1458823604 c:\code\lisa\src\rle.h
 	"global.h"
 
-1458126923 c:\code\lisa\src\file\bri.h
+1474543278 c:\code\lisa\src\file\bri.h
 	"pgm.h"
 	"asc.h"
 	"bitio.h"
@@ -196,7 +196,7 @@
 	"model/counter.h"
 	"model/mixer.h"
 
-1459858978 c:\code\lisa\src\file\pgm.h
+1459855378 c:\code\lisa\src\file\pgm.h
 	"..\global.h"
 	"img.h"
 
@@ -206,30 +206,30 @@
 1432727597 c:\code\lisa\src\file\txt.h
 	"imgfile.h"
 
-1458665630 source:c:\code\lisa\src\file\bri.cpp
+1474543274 source:c:\code\lisa\src\file\bri.cpp
 	"bri.h"
 
-1459859027 source:c:\code\lisa\src\file\pgm.cpp
+1459855427 source:c:\code\lisa\src\file\pgm.cpp
 	"pgm.h"
 	"..\utils.h"
 
 1432029411 source:c:\code\lisa\src\file\txt.cpp
 	"txt.h"
 
-1473170158 source:c:\code\lisa\src\file\asc.cpp
+1473166780 source:c:\code\lisa\src\file\asc.cpp
 	"asc.h"
 
-1472113690 c:\code\lisa\src\file\asc.h
+1472110090 c:\code\lisa\src\file\asc.h
 	"img.h"
 	"..\utils.h"
 
-1433167506 source:c:\code\lisa\src\file\bm.cpp
+1433163906 source:c:\code\lisa\src\file\bm.cpp
 	"bm.h"
 
-1472113384 c:\code\lisa\src\file\bm.h
+1472109784 c:\code\lisa\src\file\bm.h
 	"asc.h"
 
-1459421619 c:\code\lisa\src\file\bitio.h
+1459418019 c:\code\lisa\src\file\bitio.h
 
 1458223902 c:\code\lisa\src\model\vle.h
 	"../global.h"
@@ -237,29 +237,29 @@
 1454421411 source:c:\code\lisa\src\model\vle.cpp
 	"vle.h"
 
-1459858537 c:\code\lisa\src\file\img.h
+1459854937 c:\code\lisa\src\file\img.h
 	"..\global.h"
 
-1456834383 source:c:\code\lisa\src\file\tiff.cpp
+1456830783 source:c:\code\lisa\src\file\tiff.cpp
 	"tiff.h"
 
-1456834385 c:\code\lisa\src\file\tiff.h
+1456830785 c:\code\lisa\src\file\tiff.h
 	"img.h"
 	"tiffio.h"
 
-1442214030 c:\msys64\mingw64\include\tiffio.h
+1442210430 c:\msys64\mingw64\include\tiffio.h
 	"tiff.h"
 	"tiffvers.h"
 	<windows.h>
 	<stdio.h>
 	<stdarg.h>
 
-1442214030 c:\msys64\mingw64\include\tiff.h
+1442210430 c:\msys64\mingw64\include\tiff.h
 	"tiffconf.h"
 
-1442214030 c:\msys64\mingw64\include\tiffconf.h
+1442210430 c:\msys64\mingw64\include\tiffconf.h
 
-1442214030 c:\msys64\mingw64\include\tiffvers.h
+1442210430 c:\msys64\mingw64\include\tiffvers.h
 
 1457088919 source:c:\code\lisa\src\cmdoptions.cpp
 	"cmdoptions.h"
@@ -267,42 +267,42 @@
 1457088893 c:\code\lisa\src\cmdoptions.h
 	"global.h"
 
-1459419128 c:\code\lisa\src\model\sic.h
+1459415528 c:\code\lisa\src\model\sic.h
 	"../global.h"
 	"../file/bitio.h"
 
-1473169440 source:c:\code\lisa\src\model\sic.cpp
+1473165840 source:c:\code\lisa\src\model\sic.cpp
 	"sic.h"
 	"..\utils.h"
 
-1460463995 source:c:\code\lisa\src\analysis\map.cpp
+1460460395 source:c:\code\lisa\src\analysis\map.cpp
 	"map.h"
 	"../model/sic.h"
 	"../common/timer.h"
 	"../file/tiff.h"
 
-1460451612 c:\code\lisa\src\analysis\map.h
+1460448012 c:\code\lisa\src\analysis\map.h
 	"../global.h"
 	"../utils.h"
 	"../file/pgm.h"
 	"cluster.h"
 
-1472116134 source:c:\code\lisa\src\common\cmdoptions.cpp
+1472112534 source:c:\code\lisa\src\common\cmdoptions.cpp
 	"cmdoptions.h"
 	"..\utils.h"
 
-1472116112 c:\code\lisa\src\common\cmdoptions.h
+1472112512 c:\code\lisa\src\common\cmdoptions.h
 	"..\global.h"
 
-1473169683 c:\code\lisa\src\utils.h
+1473166083 c:\code\lisa\src\utils.h
 	"global.h"
 
-1459245986 c:\code\lisa\src\common\rand.h
+1459242386 c:\code\lisa\src\common\rand.h
 	"..\global.h"
 
-1410528127 c:\code\lisa\src\common\bmatrix.h
+1410524527 c:\code\lisa\src\common\bmatrix.h
 
-1472116264 source:c:\code\lisa\src\cmdline.cpp
+1474543303 source:c:\code\lisa\src\cmdline.cpp
 	"cmdline.h"
 	"common/rand.h"
 	"common/bmatrix.h"
@@ -310,7 +310,7 @@
 	"analysis/map.h"
 	"file/shape.h"
 
-1472116230 c:\code\lisa\src\cmdline.h
+1474543310 c:\code\lisa\src\cmdline.h
 	"global.h"
 	"analysis\cluster.h"
 	"file/pgm.h"
@@ -318,13 +318,13 @@
 	"file/asc.h"
 	"file/tiff.h"
 
-1459248005 c:\code\lisa\src\common\timer.h
+1459244405 c:\code\lisa\src\common\timer.h
 	<chrono>
 	"../global.h"
 
-1472198526 source:c:\code\lisa\src\file\shape.cpp
+1472194926 source:c:\code\lisa\src\file\shape.cpp
 	"shape.h"
 
-1472115103 c:\code\lisa\src\file\shape.h
+1472111503 c:\code\lisa\src\file\shape.h
 	"asc.h"
 

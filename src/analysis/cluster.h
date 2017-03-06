@@ -25,10 +25,12 @@ class cluster_stats {
 
     max_area=std::numeric_limits<double>::min();
     min_area=std::numeric_limits<double>::max();
+    total_edge_area_250=total_edge_area_500=total_edge_area_1000=0.;
   };
   int64_t cell_area,num_clusters,num_clusters10ha,num_clusters50ha;
   double total_area,min_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
   double total_biomass,total_closs,surface_area;
+  double total_edge_area_250,total_edge_area_500,total_edge_area_1000;
   vector <int64_t>fragment_state_total;
   vector <double>fragment_state_area;
 };
@@ -100,7 +102,7 @@ class Cluster
   protected:
     void FlushClusters(int cur_row);
     void AddClusterStats(int64_t parea,const tcelldata &cell);
-    void AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state);
+    void AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state,vector <int64_t>&hist_fragment_si,vector <double>&hist_mean_si);
     int UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len);
     cluster_stats myStats;
     void CompressTree(int cur_row);
@@ -119,6 +121,7 @@ class Cluster
     void WriteHist(ofstream &file,std::vector <int64_t> &hist,std::string header);
     void WriteHist(ofstream &file,std::vector <double> &hist,std::string header);
     double CalculateEdgeAreaDE(double area,double edge_len);
+    double CalculateShapeIndex(double edge_len,double area);
     double CalculateEdgeAreaCircle(double area);
     int64_t FindRoot(int64_t clabel);
     int64_t FindCollapse(int64_t label);

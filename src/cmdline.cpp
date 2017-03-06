@@ -134,7 +134,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
 
 // convert given raster format pgm/asc/bri to bri
 // output-pgm is currently broken
-void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool force_overwrite,const geoExtend &myExtend)
+void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool force_overwrite,const geoExtend &myExtend,int threshold)
 {
   if (OpenInputRaster(str_ifile)==0) {
     if (myIMG!=nullptr) {
@@ -149,7 +149,7 @@ void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int
           if (Utils::OpenWriteCheck(str_efile,force_overwrite)) myASC.WriteExtend(str_efile,8);
         }
         IMGBRI outBRI;
-        outBRI.ConvertToBRI(*myIMG,str_ofile,SIC::COMP_BILEVEL);
+        outBRI.ConvertToBRI(*myIMG,str_ofile,SIC::COMP_BILEVEL,threshold);
       }
       myIMG->Close();
     } else cerr << "  warning: unsupported raster input format" << endl;
