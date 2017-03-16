@@ -58,11 +58,13 @@ class AnalyzeOptions {
     flush_clusters=false;
     verbose=true;
     calc_surface_area=false;
+
+    threshold_fc=false;
   }
   double mean_biomass,bthres,relative_carbon_loss,edge_distance;
   int edge_dept,min_fragment_size,write_mode,save_mode,max_,max_npixel_vert;
   int forest_cover_threshold;
-  bool check_consistency,flush_clusters,verbose,calc_surface_area;
+  bool threshold_fc,check_consistency,flush_clusters,verbose,calc_surface_area;
 };
 
 struct tcelldata

@@ -3,7 +3,7 @@
 #include "cmdline.h"
 #include "analysis/map.h"
 
-#define LISA_VERSION "Large Image Spatial Analysis v1.6.0 (c) 2014-2017 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v1.6.1 (c) 2014-2017 - Sebastian Lehmann"
 
 void PrintVersion(int mode=0)
 {
@@ -112,7 +112,7 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("","--surfacearea")) AnalyzeOptions.calc_surface_area=true;
     if (myCmdOpt.searchOption("-v","--verbose")) myCmdOpt.getOpt(verbosity_level);
     if (myCmdOpt.searchOption("-d","--dept")) {myCmdOpt.getOpt(AnalyzeOptions.edge_dept);};
-    if (myCmdOpt.searchOption("","--threshold")) {myCmdOpt.getOpt(AnalyzeOptions.forest_cover_threshold);};
+    if (myCmdOpt.searchOption("","--threshold")) {AnalyzeOptions.threshold_fc=true;myCmdOpt.getOpt(AnalyzeOptions.forest_cover_threshold);};
     if (myCmdOpt.searchOption("","--map-mask")) {myCmdOpt.getOpt(str_maskfile);};
     if (myCmdOpt.searchOption("","--flush")) {AnalyzeOptions.flush_clusters=true;};
     if (myCmdOpt.searchOption("-f","--fragment")) {myCmdOpt.getOpt(AnalyzeOptions.min_fragment_size);};

@@ -538,7 +538,7 @@ int Cluster::UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len)
 {
   for (int i=0;i<len;i++) {
     uint8_t val=srcrow[i];
-    if (opt.analyze_opt.forest_cover_threshold>0) {
+    if (opt.analyze_opt.threshold_fc) { // thresholding activated?
       if (val>opt.analyze_opt.forest_cover_threshold) val=1;
       else val=0;
     }
