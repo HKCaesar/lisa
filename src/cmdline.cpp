@@ -37,6 +37,47 @@ int ComandLine::OpenInputRaster(const std::string &str_ifile)
   } else return 1;
 }
 
+void ComandLine::FractalAnalysis(const std::string &str_ifile)
+{
+  struct BoxStat {
+    int box_size;
+    int64_t box_count;
+  };
+  int box_size=2;
+  int box_scale=2;
+
+  std::vector <BoxStat> stat_boxcount;
+
+  bool first=true;
+  for (int n=0;n<8;n++) {
+    if (OpenInputRaster(str_ifile)==0) {
+      if (myIMG!=nullptr) {
+        if (first) {myIMG->PrintInfo();first=false;};
+        FractalDimension fractaldim(*myIMG);
+        fractaldim.AnalyseBoxSize(box_size);
+
+        BoxStat bstat;
+        bstat.box_size=box_size;
+        bstat.box_count=fractaldim.GetBoxCount();
+        stat_boxcount.push_back(bstat);
+
+        myIMG->Close();
+      } else cerr << "  warning: unsupported raster input format" << endl;
+    } else cout << "not found!" << endl;
+    box_size*=box_scale;
+  }
+
+  std::string str_boxfile;
+  Utils::ReplaceExt(str_ifile,str_boxfile,".box.txt",true);
+  ofstream ofile(str_boxfile);
+  if (ofile.is_open()) {
+    for (auto &stat:stat_boxcount) {
+      ofile << "{" << stat.box_size << "," << stat.box_count << "},";
+    }
+    ofile.close();
+  }
+}
+
 // connected component analysis of a supported raster file
 void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfile,const std::string &shapefile,const std::vector<int>shape_mask,AnalyzeOptions &AnalyzeOptions,const geoExtend &myextend)
 {
@@ -65,9 +106,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
       myProj.CalculateCellSize();
       myProj.PrintInfo();
       cout << endl;
-      myProj.GenerateInterpolation(AnalyzeOptions.edge_distance);
-      AnalyzeOptions.max_npixel_vert=myProj.GetMaxVerticalPixels(); // set maximal vertical pixels for correct buffer-size
-      //cout << "vertical pixels: " << myProj.GetMaxVerticalPixels() << std::endl;
+      myProj.GenerateInterpolation();
 
       // read biomass file
       BM myBiomass(AnalyzeOptions.mean_biomass);
@@ -134,7 +173,7 @@ void ComandLine::Analyze(const std::string &str_ifile,const std::string &str_bfi
 
 // convert given raster format pgm/asc/bri to bri
 // output-pgm is currently broken
-void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool force_overwrite,const geoExtend &myExtend,int threshold)
+void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int cmode,bool globcover,bool force_overwrite,const geoExtend &myExtend)
 {
   if (OpenInputRaster(str_ifile)==0) {
     if (myIMG!=nullptr) {
@@ -149,7 +188,7 @@ void ComandLine::Convert(const std::string &str_ifile,std::string &str_ofile,int
           if (Utils::OpenWriteCheck(str_efile,force_overwrite)) myASC.WriteExtend(str_efile,8);
         }
         IMGBRI outBRI;
-        outBRI.ConvertToBRI(*myIMG,str_ofile,SIC::COMP_BILEVEL,threshold);
+        outBRI.ConvertToBRI(*myIMG,str_ofile,SIC::COMP_BILEVEL);
       }
       myIMG->Close();
     } else cerr << "  warning: unsupported raster input format" << endl;

@@ -43,7 +43,7 @@ class IMGBRI : public IMG
       for (int i=0;i<256;i++) pixel_hist[i]=0;
     };
     //void ConvertFromPGM(PGM &myPGM,std::string &str_ofile,bool globcover=false);
-    void ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE compression_type,int threshold=0);
+    void ConvertToBRI(IMG &myIMG,std::string &str_outfile,SIC::COMP_TYPE compression_type);
     void ConvertToPGM(IMGPGM &myPGM,std::string &str_ofile);
     IMGTYPE GetType(){return TYPEBRI;};
     int ReadHeader();

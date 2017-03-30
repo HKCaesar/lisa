@@ -8,7 +8,6 @@
 struct inter_cell
 {
   double pixel_width_bottom,pixel_width_top,pixel_height,pixel_area;
-  int npixel_horiz,npixel_vert;
 };
 
 // defines functions for dealing with projections & coordinates (wgs-84)
@@ -20,7 +19,7 @@ class Projection {
   const double WGS84_e2=(2.0-WGS84_f)*WGS84_f; //eccentricity squared
   const double WGS84_n=WGS84_f/(2.0-WGS84_f); //third flattening
   public:
-    Projection(int w,int h):width(w),height(h),top(0),left(0),right(0),bottom(0),max_npixel_vert(0){};
+    Projection(int w,int h):width(w),height(h),top(0),left(0),right(0),bottom(0){};
     int ReadCoordinateFile(const std::string &fname);
     void SetProjection(double ttop,double tleft,double tbottom,double tright);
     double getLeft(){return left;};
@@ -50,9 +49,8 @@ class Projection {
     {
       return inter_matrix[y];
     }
-    void GenerateInterpolation(double edge_distance);
+    void GenerateInterpolation();
     void SetDummyInterpolation(int len);
-    int GetMaxVerticalPixels(){return max_npixel_vert;};
     //double GetMeanPixelArea(){return mean_pixelarea;};
   protected:
     //inter_cell CalcArea_geodesic(double top,double left,double bottom,double right);
@@ -73,7 +71,6 @@ class Projection {
     double top,left,right,bottom;
     double cellsize;
     std::vector < inter_cell> inter_matrix;
-    int max_npixel_vert;
 };
 
 #endif // PROJ_H

@@ -17,7 +17,7 @@ class cluster_stats {
       }
   void Reset(){
     cell_area=num_clusters=num_clusters10ha=num_clusters50ha=0;
-    surface_area=total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=0.0;
+    surface_area=total_area=mean_area=total_border_len=total_edge_area_de=total_edge_area_circle=total_corridor_len=0.0;
     total_biomass=total_closs=0.;
 
     std::fill(begin(fragment_state_total),end(fragment_state_total),0);
@@ -25,12 +25,10 @@ class cluster_stats {
 
     max_area=std::numeric_limits<double>::min();
     min_area=std::numeric_limits<double>::max();
-    total_edge_area_250=total_edge_area_500=total_edge_area_1000=0.;
   };
   int64_t cell_area,num_clusters,num_clusters10ha,num_clusters50ha;
-  double total_area,min_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area;
+  double total_area,min_area,mean_area,total_border_len,total_edge_area_de,total_edge_area_circle,max_area,total_corridor_len;
   double total_biomass,total_closs,surface_area;
-  double total_edge_area_250,total_edge_area_500,total_edge_area_1000;
   vector <int64_t>fragment_state_total;
   vector <double>fragment_state_area;
 };
@@ -46,25 +44,24 @@ class AnalyzeOptions {
     //ncells=1; // number of interpolation cells
     edge_dept=100; // edge effect dept 100m
     min_fragment_size=0; // minimum fragment size 0 ha
-    max_npixel_vert=1; // pixel number for edge detection
-    edge_distance=60;
+    pixel_len=1; // pixel number for edge detection
 
     write_mode=0;
     save_mode=0;
 
     forest_cover_threshold=0;
+    nrows=0;
 
     check_consistency=false;
     flush_clusters=false;
     verbose=true;
     calc_surface_area=false;
-
     threshold_fc=false;
   }
-  double mean_biomass,bthres,relative_carbon_loss,edge_distance;
-  int edge_dept,min_fragment_size,write_mode,save_mode,max_,max_npixel_vert;
-  int forest_cover_threshold;
-  bool threshold_fc,check_consistency,flush_clusters,verbose,calc_surface_area;
+  double mean_biomass,bthres,relative_carbon_loss;
+  int edge_dept,min_fragment_size,pixel_len,write_mode,save_mode;
+  int forest_cover_threshold,nrows;
+  bool check_consistency,flush_clusters,verbose,calc_surface_area,threshold_fc;
 };
 
 struct tcelldata
@@ -104,7 +101,7 @@ class Cluster
   protected:
     void FlushClusters(int cur_row);
     void AddClusterStats(int64_t parea,const tcelldata &cell);
-    void AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss,vector <double>&hist_fragment_state,vector <int64_t>&hist_fragment_si,vector <double>&hist_mean_si);
+    void AddClusterSmallStats(const tcelldata &cell,vector <int64_t>&hist_area,vector <double>&hist_totalarea,vector <double>&hist_totaledge,vector <double>&hist_biomass,vector <double>&hist_totalloss);
     int UnpackRow(int64_t *dstrow,uint8_t *srcrow,int len);
     cluster_stats myStats;
     void CompressTree(int cur_row);
@@ -113,17 +110,18 @@ class Cluster
     void WriteLabelFile();
     void WriteClusterfile();
     void WriteMarkedRow(int64_t *clusterow,uint32_t width,FILE *file);
-    void DetectBorders(int row,int cur_row,int i,inter_cell &icell);
-    void CalculateBorder(inter_cell &icell,double &border_len);
+    void DetectBorders(int row,int cur_row,int i,bool &bleft,bool &bright,bool &btop,bool &bbottom);
+    void DetectBorders(int row,int cur_row,int i);
+    void CalculateBorder(inter_cell &icell,double &border_len,double &corridor_len);
+    double CalculateBorder(inter_cell &icell,bool left,bool right,bool top,bool bottom);
     void PrintProgress(int y,int height);
-    void ProcessRow(int row,int row_offset,int cur_row,int mask_ptr);
+    void ProcessRow(int irow,int row_offset,int cur_row,int mask_ptr,int corner_left,int corner_right);
     void CalculateStats();
     void PrintHist(std::vector <int64_t> &hist,std::string header);
     void PrintHist(std::vector <double> &hist,std::string header,std::string unit);
     void WriteHist(ofstream &file,std::vector <int64_t> &hist,std::string header);
     void WriteHist(ofstream &file,std::vector <double> &hist,std::string header);
     double CalculateEdgeAreaDE(double area,double edge_len);
-    double CalculateShapeIndex(double edge_len,double area);
     double CalculateEdgeAreaCircle(double area);
     int64_t FindRoot(int64_t clabel);
     int64_t FindCollapse(int64_t label);
@@ -139,13 +137,13 @@ class Cluster
     int64_t max_cluster_label,total_roots_written,num_1pixel;
     //int row;
     int64_t max_border_pixel;
-    int lookahead_rows,bufrows,num_rows;
+    int bufrows,lookahead_rows,num_rows;
     FILE *clusterfile1;
     fstream ofs_clusterfile;
     int64_t *labelrow,*rowtmp,minlabel;
     vector <uint8_t> clusterrowdata_;
     uint32_t maxrowdatasize_;
-    std::vector <bool>vborder;
+    std::vector <bool>vborder,vcorridor;
 };
 
 #endif // CLUSTER_H

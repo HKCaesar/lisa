@@ -19,6 +19,8 @@ class SIC {
     SIC(int img_width,COMP_TYPE compression_type);
     ~SIC();
     int CompressRowBinary(uint8_t *linebuf,uint8_t *outbuf);
+    static int CompressRowBinary(uint8_t *linebuf,uint8_t *outbuf,int width);
+    static int DecompressRowBinary(uint8_t *inbuf,uint8_t *linebuf,int width);
     int DecompressRowBinary(uint8_t *inbuf,uint8_t *linebuf);
     int CompressRowGrey(uint8_t *linebuf,uint8_t *outbuf);
     int DecompressRowGrey(uint8_t *inbuf,uint8_t *linebuf);

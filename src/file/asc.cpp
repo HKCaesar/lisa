@@ -41,19 +41,16 @@ int IMGASC::ReadHeader()
   //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
-  std::replace(begin(val),end(val),',','.');
   if (ukey.compare("XLLCORNER")==0) left=std::stod(val);
   else return 1;
   //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
-  std::replace(begin(val),end(val),',','.');
   if (ukey.compare("YLLCORNER")==0) bottom=std::stod(val);
   else return 1;
   //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};
 
   getLine (line);Utils::Split(line,key,val);ukey=StringUtils::toupper(key);
-  std::replace(begin(val),end(val),',','.');
   if (ukey.compare("CELLSIZE")==0) cellsize=std::stod(val);
   else return 1;
   //else {Utils::PrintWarning("unknown key: '" + key + "'");return 1;};

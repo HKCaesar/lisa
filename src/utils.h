@@ -489,7 +489,7 @@ static bool isDouble( string myString ) {
 
 class Frame {
   public:
-     static bool SetExtend(double ref_left,double ref_top,double cellsize,const geoExtend &extend,int width,int height,int &pleft,int &ptop,int &pright,int &pbottom)
+     static void SetExtend(double ref_left,double ref_top,double cellsize,const geoExtend &extend,int width,int height,int &pleft,int &ptop,int &pright,int &pbottom)
      {
         pleft=0;pright=width;
         ptop=0;pbottom=height;
@@ -518,10 +518,9 @@ class Frame {
            pleft=0;pright=width;
            ptop=0;pbottom=height;
          }
-          std::cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
-          return true;
-        } else return false;
-     };
+        }
+        std::cout << "x: [" << pleft << "," << pright << "], y: [" << ptop << "," << pbottom << "]\n";
+     }
 };
 
 

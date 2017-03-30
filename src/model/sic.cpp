@@ -58,7 +58,7 @@ namespace RLEPack {
 SIC::SIC(int img_width,COMP_TYPE compression_type)
 :width(img_width),comptype(compression_type)
 {
-  //cout << "sic: " << width << ", " << comptype << endl;
+  cout << "sic: " << width << ", " << comptype << endl;
   tbuf=new uint8_t[10*width];
 }
 
@@ -68,6 +68,11 @@ SIC::~SIC()
 }
 
 int SIC::CompressRowBinary(uint8_t *linebuf,uint8_t *outbuf)
+{
+  CompressRowBinary(linebuf,outbuf,width);
+}
+
+int SIC::CompressRowBinary(uint8_t *linebuf,uint8_t *outbuf,int width)
 {
   BitBuffer bitout(outbuf+4);
   bool sbit=linebuf[0];
@@ -93,6 +98,11 @@ int SIC::CompressRowBinary(uint8_t *linebuf,uint8_t *outbuf)
 }
 
 int SIC::DecompressRowBinary(uint8_t *inbuf,uint8_t *linebuf)
+{
+  DecompressRowBinary(inbuf,linebuf,width);
+}
+
+int SIC::DecompressRowBinary(uint8_t *inbuf,uint8_t *linebuf,int width)
 {
   BitBuffer bitin(inbuf+4);
   bool sbit=bitin.GetBits(1);

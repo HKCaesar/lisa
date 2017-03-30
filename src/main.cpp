@@ -3,7 +3,7 @@
 #include "cmdline.h"
 #include "analysis/map.h"
 
-#define LISA_VERSION "Large Image Spatial Analysis v1.6.1 (c) 2014-2017 - Sebastian Lehmann"
+#define LISA_VERSION "Large Image Spatial Analysis v1.5 (c) 2014-2017 - Sebastian Lehmann"
 
 void PrintVersion(int mode=0)
 {
@@ -27,39 +27,40 @@ void PrintVersion(int mode=0)
 
 const std::string LISA_USAGE={
 "lisa [-/--options]\n\n"
-"-a,--analyze       analyze connected components of a raster file (#-area cells)\n"
-"  -f,--fragment    statistics using minimum fragment size in [ha] (default: 0)\n"
-"  -s,--save        save results to .csv file, 1=small, 2=large\n"
-"  --edge-distance  minimum cardinal non forest distance for edge detection, default: 50m\n"
-"  -w,--write       write clusterlabel data (bin/lab), 1=clusters+labels, 2=labels\n"
-"  -b               mean biomass\n"
-"  --agb-file       agb biomass file [t/ha]\n"
-"  --bthres         biomass threshold [t/ha] (default: 0 t/ha)\n"
-"  --raster-file    intersection file for analyzation\n"
-"  --raster-mask    integer vector of intersection mask\n"
-"  --check          check consistency of component analysis\n"
-"  --rloss          relative carbon loss in edge areas, default: 0.5\n"
-"  --flush          flush clusters to use fixed amount of memory\n"
-"  --surfacearea    calculate total surface area (slow)\n"
-"-c,--convert       convert raster file into [bri] file (g=globcover)\n"
-"-m,--map           produce a density map, out of bin/lab file\n"
-"  --map-type       0=closs, 1=core/area\n"
-"  -e,--extend      top,left,right,bottom\n"
-"--reduce           reduce classified image\n"
-"--classify         classify density map and datamask map\n"
-"  --map-mask       datamask map\n"
-"  --map-scale      number of output classes 1...256\n"
-"  --map-class      0=4 classes, 1=--map-scale classes\n"
-"--map-reduction    reduction factor, default: 500\n"
-"-t,--test          test consistence of lisa\n"
-"-v,--verbose       verbosity level [0-2] (default: 1)\n"
-"-d,--dept          edge effect dept of d [m], default: 100\n"
-"--info             info about raster file\n"
-"--input            inputfile\n"
-"--output           outputfile\n"
-"--version          print version info\n"
-"--threshold        forest cover threshold for forest/nonforest map\n"
-"--force            force overwrite of files\n"
+"-a,--analyze      analyze connected components of a raster file (#-area cells)\n"
+"  -f,--fragment   statistics using minimum fragment size in [ha] (default: 0)\n"
+"  -s,--save       save results to .csv file, 1=small, 2=large\n"
+"  -p,--pixel      minimum pixel length for edge detection, default: 1\n"
+"  -w,--write      write clusterlabel data (bin/lab), 1=clusters+labels, 2=labels\n"
+"  -b              mean biomass\n"
+"  --nrows         number of rows to process\n"
+"  --fractal       fractal analysis\n"
+"  --agb-file      agb biomass file [t/ha]\n"
+"  --bthres        biomass threshold [t/ha] (default: 0 t/ha)\n"
+"  --raster-file   intersection file for analyzation\n"
+"  --raster-mask   integer vector of intersection mask\n"
+"  --check         check consistency of component analysis\n"
+"  --rloss         relative carbon loss in edge areas, default: 0.5\n"
+"  --flush         flush clusters to use fixed amount of memory\n"
+"  --surfacearea   calculate total surface area (slow)\n"
+"-c,--convert      convert raster file into [bri] file (g=globcover)\n"
+"-m,--map          produce a density map, out of bin/lab file\n"
+"  --map-scale     number of output classes 1...256\n"
+"  --map-type      0=closs, 1=core/area\n"
+"  --map-class     0=4 classes, 1=--map-scale classes\n"
+"  -e,--extend     top,left,right,bottom\n"
+"--reduce          reduce classified image\n"
+"--classify        classify density map and datamask map\n"
+"--map-reduction   reduction factor, default: 500\n"
+"-t,--test         test consistence of lisa\n"
+"-v,--verbose      verbosity level [0-2] (default: 1)\n"
+"-d,--dept         edge effect dept of d [m], default: 100\n"
+"--info            info about raster file\n"
+"--input           inputfile\n"
+"--output          outputfile\n"
+"--version         print version info\n"
+"--threshold       forest cover threshold for forest/nonforest map\n"
+"--force           force overwrite of files\n"
 "supported raster file formats: asc, pgm, tiff, bri\n"
 };
 
@@ -106,6 +107,7 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("-t","--test")) cmode=ComandLine::TEST;
     if (myCmdOpt.searchOption("-m","--map")) cmode=ComandLine::MAP;
     if (myCmdOpt.searchOption("","--reduce")) cmode=ComandLine::REDUCE;
+    if (myCmdOpt.searchOption("","--fractal")) cmode=ComandLine::FRACTAL;
     if (myCmdOpt.searchOption("","--classify")) cmode=ComandLine::CLASSIFY;
     if (myCmdOpt.searchOption("","--version")) cmode=ComandLine::VERSION;
     if (myCmdOpt.searchOption("","--force")) force_overwrite=true;
@@ -113,13 +115,14 @@ int main(int argc,char *argv[])
     if (myCmdOpt.searchOption("-v","--verbose")) myCmdOpt.getOpt(verbosity_level);
     if (myCmdOpt.searchOption("-d","--dept")) {myCmdOpt.getOpt(AnalyzeOptions.edge_dept);};
     if (myCmdOpt.searchOption("","--threshold")) {AnalyzeOptions.threshold_fc=true;myCmdOpt.getOpt(AnalyzeOptions.forest_cover_threshold);};
+    if (myCmdOpt.searchOption("","--nrows")) {myCmdOpt.getOpt(AnalyzeOptions.nrows);};
     if (myCmdOpt.searchOption("","--map-mask")) {myCmdOpt.getOpt(str_maskfile);};
     if (myCmdOpt.searchOption("","--flush")) {AnalyzeOptions.flush_clusters=true;};
     if (myCmdOpt.searchOption("-f","--fragment")) {myCmdOpt.getOpt(AnalyzeOptions.min_fragment_size);};
     if (myCmdOpt.searchOption("-w","--write")) myCmdOpt.getOpt(AnalyzeOptions.write_mode);
     if (myCmdOpt.searchOption("-s","--save")) myCmdOpt.getOpt(AnalyzeOptions.save_mode);
     if (myCmdOpt.searchOption("-b","")) myCmdOpt.getOpt(AnalyzeOptions.mean_biomass);
-    if (myCmdOpt.searchOption("","--edge-distance")) myCmdOpt.getOpt(AnalyzeOptions.edge_distance);
+    if (myCmdOpt.searchOption("-p","--pixel")) myCmdOpt.getOpt(AnalyzeOptions.pixel_len);
     if (myCmdOpt.searchOption("-i","--input")) myCmdOpt.getOpt(str_ifile);
     if (myCmdOpt.searchOption("-o","--output")) myCmdOpt.getOpt(str_ofile);
     if (myCmdOpt.searchOption("","--agb-file")) myCmdOpt.getOpt(str_bmfile);
@@ -138,7 +141,7 @@ int main(int argc,char *argv[])
        cout << "edge dept:     " << AnalyzeOptions.edge_dept << endl;
        cout << "mean biosmass: " << AnalyzeOptions.mean_biomass << endl;
        cout << "min fragment:  " << AnalyzeOptions.min_fragment_size << endl;
-       cout << "edge distance: " << AnalyzeOptions.edge_distance << endl;
+       cout << "pixel len:     " << AnalyzeOptions.pixel_len << endl;
        cout << "rel. c-loss:   " << AnalyzeOptions.relative_carbon_loss << endl;
        cout << "savemode:      " << AnalyzeOptions.save_mode << endl;
        cout << "writemode:     " << AnalyzeOptions.write_mode << endl;
@@ -155,12 +158,13 @@ int main(int argc,char *argv[])
     switch (cmode) {
       case ComandLine::ANALYZE:myCmdLine.Analyze(str_ifile,str_bmfile,str_shapefile,shape_mask,AnalyzeOptions,myGeoExtend);break;
       case ComandLine::CONVERT:
-      case ComandLine::INFO:myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend,AnalyzeOptions.forest_cover_threshold);break;
+      case ComandLine::INFO:myCmdLine.Convert(str_ifile,str_ofile,cmode,globcover,force_overwrite,myGeoExtend);break;
       case ComandLine::TEST:myCmdLine.TestConsistency();break;
       case ComandLine::MAP:myCmdLine.Create(str_ifile,str_ofile,reduction_factor,map_type,AnalyzeOptions.edge_dept,myGeoExtend);break;
       case ComandLine::REDUCE:myCmdLine.Reduce(str_ifile,str_ofile,reduction_factor);break;
       case ComandLine::CLASSIFY:myCmdLine.Classify(str_ifile,str_maskfile,str_ofile,map_scale,map_class);break;
       case ComandLine::VERSION:PrintVersion(1);break;
+      case ComandLine::FRACTAL:myCmdLine.FractalAnalysis(str_ifile);break;
       default: cout << "unknown mode: " << cmode << endl;break;
     }
     return 0;
